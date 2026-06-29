@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "title": "How I Built X in 2 Days",
+    "description": "A quick breakdown of shipping fast with minimal tooling",
+    "slug": "how-i-built-x-in-2-days",
+    "date": "2026-05-10",
+    "tags": ["build", "indie"],
+    "filename": "how-i-built-x-in-2-days.md"
+  },
+  {
+    "id": "2",
+    "title": "Why Less Code Wins",
+    "description": "Thoughts on simplicity over abstraction",
+    "slug": "why-less-code-wins",
+    "date": "2026-06-01",
+    "tags": ["philosophy", "code"],
+    "filename": "why-less-code-wins.md"
+  }
+]

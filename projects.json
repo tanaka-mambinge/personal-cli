@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "title": "My Awesome Project",
+    "description": "A cool thing I built that solves a real problem",
+    "type": "link",
+    "url": "https://github.com/username/project",
+    "date": "2026-03-01",
+    "tags": ["react", "typescript"]
+  },
+  {
+    "id": "2",
+    "title": "Demo Video: Dashboard UI",
+    "description": "A walkthrough of the dashboard interface I designed",
+    "type": "video",
+    "url": "https://youtube.com/watch?v=xxx",
+    "date": "2026-04-15",
+    "tags": ["ui", "design"]
+  }
+]
