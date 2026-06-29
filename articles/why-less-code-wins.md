@@ -1,3 +1,10 @@
+---
+title: "Why Less Code Wins"
+description: "Thoughts on simplicity over abstraction"
+date: 2026-06-01
+tags: [philosophy, code]
+---
+
 # Why Less Code Wins
 
 Every line you don't write is a line that can't break.

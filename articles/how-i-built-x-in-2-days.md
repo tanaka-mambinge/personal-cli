@@ -1,3 +1,10 @@
+---
+title: "How I Built X in 2 Days"
+description: "A quick breakdown of shipping fast with minimal tooling"
+date: 2026-05-10
+tags: [build, indie]
+---
+
 # How I Built X in 2 Days
 
 Short timeline, sharp focus. No over-engineering.
