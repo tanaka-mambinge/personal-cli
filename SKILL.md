@@ -1,3 +1,8 @@
+---
+name: blog-cli
+description: Use blog-cli to create and manage blog articles. Supports drafts, media uploads, time-limited preview links, and publishing. Use when creating, updating, publishing, or previewing blog articles from the command line.
+---
+
 # Skill: Blog CLI Management
 
 Use `blog-cli` as the canonical way to create and manage blog articles. The CLI talks to a FastAPI backend over HTTP.
