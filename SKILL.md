@@ -3,14 +3,21 @@ name: blog-cli
 description: Use blog-cli to create and manage blog articles. Supports drafts, media uploads, time-limited preview links, and publishing. Use when creating, updating, publishing, or previewing blog articles from the command line.
 ---
 
-# Skill: Blog CLI Management
+## Install
 
-Use `blog-cli` as the canonical way to create and manage blog articles. The CLI talks to a FastAPI backend over HTTP.
+```bash
+pip install blog-cli
+```
 
-## Auth
+## Config
 
-- The CLI sends `Authorization: Bearer <key>` automatically when `PERSONAL_API_KEY` is set
-- Use `--insecure` if the server has a self-signed cert
+Set these env vars:
+
+```bash
+export PERSONAL_SERVER_URL="https://api.personal.localhost:1355"
+export PERSONAL_API_KEY="your-api-key"
+export PERSONAL_SITE_URL="https://personal.localhost:1355"
+```
 
 ## Commands
 

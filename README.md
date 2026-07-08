@@ -7,8 +7,13 @@ Designed for use by both humans and AI agents.
 ## Install
 
 ```bash
+pip install blog-cli
+```
+
+Or via pipx/uv:
+
+```bash
 pipx install blog-cli
-# or
 uv tool install blog-cli
 ```
 
@@ -16,7 +21,7 @@ For development:
 
 ```bash
 git clone https://github.com/tanaka-mambinge/personal-cli
-cd personal/blog-cli
+cd personal-cli
 uv sync --extra dev
 ```
 
