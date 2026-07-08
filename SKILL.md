@@ -14,9 +14,9 @@ pip install blog-cli
 Set these env vars:
 
 ```bash
-export PERSONAL_SERVER_URL="https://api.personal.localhost:1355"
-export PERSONAL_API_KEY="your-api-key"
-export PERSONAL_SITE_URL="https://personal.localhost:1355"
+export PERSONAL_SERVER_URL="<your-server-url>"
+export PERSONAL_API_KEY="<your-api-key>"
+export PERSONAL_SITE_URL="<your-site-url>"
 ```
 
 ## Commands
@@ -115,7 +115,7 @@ Names map to `/api/v1/media/{name}`. The site resolves them to full URLs.
 ### Preview response
 ```json
 {
-  "url": "https://personal.localhost:1355/blog/my-post?preview=abc123",
+  "url": "<site-url>/blog/my-post?preview=abc123",
   "token": "abc123", "slug": "my-post",
   "expires_at": "2026-07-09T00:00:00Z"
 }
