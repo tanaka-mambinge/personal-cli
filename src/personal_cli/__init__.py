@@ -1,0 +1,2 @@
+"""Personal article CLI."""
+

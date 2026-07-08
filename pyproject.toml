@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blog-cli"
+version = "0.1.0"
+description = "Agent-friendly CLI for managing a blog. Create drafts, upload media, generate time-limited preview links."
+readme = "README.md"
+requires-python = ">=3.14"
+license = {text = "MIT"}
+authors = [{name = "tanaka-mambinge"}]
+keywords = ["blog", "cli", "agent", "markdown", "writing"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+  "httpx>=0.28",
+  "typer>=0.16",
+]
+
+[project.urls]
+Repository = "https://github.com/tanaka-mambinge/personal-cli"
+Issues = "https://github.com/tanaka-mambinge/personal-cli/issues"
+
+[project.scripts]
+blog-cli = "personal_cli.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "asgi-lifespan>=2.1",
+  "fastapi>=0.115",
+  "motor>=3.7",
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "pymongo>=4.9",
+  "python-multipart>=0.0.20",
+  "uvicorn>=0.49",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
