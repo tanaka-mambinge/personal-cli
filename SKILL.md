@@ -11,10 +11,15 @@ pip install blog-cli
 
 ## Config
 
-Set these env vars:
+Required env var:
 
 ```bash
 export PERSONAL_SERVER_URL="<your-server-url>"
+```
+
+Optional:
+
+```bash
 export PERSONAL_API_KEY="<your-api-key>"
 export PERSONAL_SITE_URL="<your-site-url>"
 ```

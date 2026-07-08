@@ -123,10 +123,10 @@ class ArticleApiClient:
 def get_default_config() -> tuple[str, str | None]:
     import os
     _load_dotenv()
-    return (
-        os.environ.get("PERSONAL_SERVER_URL", "http://127.0.0.1:8000"),
-        os.environ.get("PERSONAL_API_KEY"),
-    )
+    server_url = os.environ.get("PERSONAL_SERVER_URL")
+    if not server_url:
+        raise CLIError("PERSONAL_SERVER_URL is not set. Set it via environment or .env file.")
+    return (server_url, os.environ.get("PERSONAL_API_KEY"))
 
 
 def _load_dotenv() -> None:
