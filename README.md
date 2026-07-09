@@ -27,15 +27,13 @@ uv sync --extra dev
 
 ## Configure
 
-Set these env vars (e.g. in `~/.zshrc`):
+All three are required:
 
 ```bash
 export PERSONAL_SERVER_URL="<your-server-url>"
 export PERSONAL_API_KEY="<your-api-key>"
 export PERSONAL_SITE_URL="<your-site-url>"
 ```
-
-Empty `PERSONAL_API_KEY` disables auth if your server has no key configured.
 
 ## Usage
 

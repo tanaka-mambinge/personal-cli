@@ -120,13 +120,17 @@ class ArticleApiClient:
         return dict(result)
 
 
-def get_default_config() -> tuple[str, str | None]:
+def get_default_config() -> tuple[str, str | None, str]:
     import os
     _load_dotenv()
     server_url = os.environ.get("PERSONAL_SERVER_URL")
     if not server_url:
-        raise CLIError("PERSONAL_SERVER_URL is not set. Set it via environment or .env file.")
-    return (server_url, os.environ.get("PERSONAL_API_KEY"))
+        raise CLIError("PERSONAL_SERVER_URL is not set.")
+    api_key = os.environ.get("PERSONAL_API_KEY")
+    if not api_key:
+        raise CLIError("PERSONAL_API_KEY is not set.")
+    site_url = os.environ.get("PERSONAL_SITE_URL", "")
+    return (server_url, api_key, site_url)
 
 
 def _load_dotenv() -> None:

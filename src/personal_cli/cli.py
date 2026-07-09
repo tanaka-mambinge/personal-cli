@@ -17,7 +17,7 @@ app.add_typer(media_app, name="media")
 
 
 def build_client(server_url: str | None = None, insecure: bool = False) -> ArticleApiClient:
-    url, api_key = get_default_config()
+    url, api_key, _ = get_default_config()
     return ArticleApiClient(server_url or url, api_key=api_key, verify=not insecure)
 
 
@@ -186,8 +186,8 @@ def article_preview(
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
     try:
-        import os
-        resolved_site_url = site_url or os.environ.get("PERSONAL_SITE_URL", "http://localhost:3000")
+        _, _, default_site_url = get_default_config()
+        resolved_site_url = site_url or default_site_url
         client = build_client(server_url, insecure=insecure)
         result = run(client.generate_preview(slug, ttl_hours=ttl_hours, base_url=resolved_site_url))
         emit_result(result, json_output=json_output)
