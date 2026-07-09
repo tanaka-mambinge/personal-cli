@@ -111,12 +111,24 @@ class ArticleApiClient:
         result = await self._request_json("DELETE", f"/api/v1/media/{name}")
         return dict(result or {})
 
-    async def generate_preview(self, slug: str, *, ttl_hours: int = 24, base_url: str = "http://localhost:3000") -> dict[str, Any]:
+    async def generate_preview(self, slug: str, *, ttl_hours: int = 24, base_url: str) -> dict[str, Any]:
         result = await self._request_json(
             "POST",
             f"/api/v1/articles/{slug}/preview",
             params={"ttl_hours": ttl_hours, "base_url": base_url},
         )
+        return dict(result)
+
+    async def list_tags(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("GET", f"/api/v1/articles/{slug}/tags")
+        return dict(result)
+
+    async def attach_tags(self, slug: str, tags: list[str]) -> dict[str, Any]:
+        result = await self._request_json("POST", f"/api/v1/articles/{slug}/tags", json={"tags": tags})
+        return dict(result)
+
+    async def remove_tag(self, slug: str, tag: str) -> dict[str, Any]:
+        result = await self._request_json("DELETE", f"/api/v1/articles/{slug}/tags", params={"tag": tag})
         return dict(result)
 
 

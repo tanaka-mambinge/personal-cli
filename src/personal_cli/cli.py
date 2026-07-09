@@ -196,6 +196,59 @@ def article_preview(
         raise typer.Exit(code=1) from exc
 
 
+@article_app.command("tag-list")
+@article_app.command("tags")
+def tag_list(
+    slug: str,
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    try:
+        client = build_client(server_url, insecure=insecure)
+        result = run(client.list_tags(slug))
+        emit_result(result, json_output=json_output)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@article_app.command("tag-add")
+def tag_add(
+    slug: str,
+    tag: list[str] = typer.Option(..., "--tag", help="Tag to attach. Repeat for multiple."),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    try:
+        client = build_client(server_url, insecure=insecure)
+        result = run(client.attach_tags(slug, tag))
+        emit_result(result, json_output=json_output)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@article_app.command("tag-remove")
+def tag_remove(
+    slug: str,
+    tag: list[str] = typer.Option(..., "--tag", help="Tag to remove. Repeat for multiple."),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    try:
+        client = build_client(server_url, insecure=insecure)
+        for t in tag:
+            run(client.remove_tag(slug, t))
+        result = run(client.list_tags(slug))
+        emit_result(result, json_output=json_output)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
 @media_app.command("upload")
 def media_upload(
     name: str = typer.Option(..., "--name", help="Unique name for the media (e.g. hero-image)."),

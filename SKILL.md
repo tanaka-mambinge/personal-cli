@@ -63,6 +63,20 @@ export PERSONAL_SITE_URL="<your-site-url>"
 
 - Soft delete (archive). Output: `{ deleted, slug, deleted_at }`
 
+### `blog-cli article tags <slug>` (or `tag-list`)
+
+- Output: `{ slug, tags: [...] }`
+
+### `blog-cli article tag-add <slug> --tag <tag>`
+
+- Append tags. Repeat `--tag` for multiple. Deduplicates.
+- Output: `{ slug, tags: [...] }`
+
+### `blog-cli article tag-remove <slug> --tag <tag>`
+
+- Remove specific tags. Repeat `--tag` for multiple.
+- Output: `{ slug, tags: [...] }`
+
 ### `blog-cli media upload --name <name> <path>`
 
 - Name is the unique key used in markdown references
