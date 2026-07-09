@@ -1,6 +1,6 @@
 ---
 name: blog-cli
-description: Use blog-cli to create and manage blog articles. Supports drafts, media uploads, time-limited preview links, and publishing. Use when creating, updating, publishing, or previewing blog articles from the command line.
+description: Use blog-cli to create and manage writing articles. Supports drafts, media uploads, time-limited preview links, and publishing only when explicitly requested. Use when creating, updating, or previewing articles from the command line. Never publish unless the user explicitly says to publish.
 ---
 
 ## Install
@@ -129,7 +129,7 @@ Names map to `/api/v1/media/{name}`. The site resolves them to full URLs.
 ### Preview response
 ```json
 {
-  "url": "<site-url>/blog/my-post?preview=abc123",
+  "url": "<site-url>/writing/my-post?preview=abc123",
   "token": "abc123", "slug": "my-post",
   "expires_at": "2026-07-09T00:00:00Z"
 }
@@ -158,6 +158,6 @@ Names map to `/api/v1/media/{name}`. The site resolves them to full URLs.
 2. Upload media with `media upload --name <name> <path>`
 3. Reference media by name in markdown
 4. Generate preview link with `article preview <slug>`
-5. Share link — recipient sees draft with countdown banner
-6. Publish with `article publish <slug>`
+5. Share the temporary preview link — recipient sees the draft with a countdown banner
+6. Only publish with `article publish <slug>` if the user explicitly says to publish
 7. Always pass `--json` for programmatic inspection
