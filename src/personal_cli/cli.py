@@ -64,6 +64,7 @@ def article_create(
     description: str = typer.Option(..., "--description", help="Short summary."),
     slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
     tag: list[str] = typer.Option([], "--tag", help="Repeat for each tag."),
+    cover_image: str | None = typer.Option(None, "--cover-image", help="Uploaded media name for the article cover image."),
     article_type: str = typer.Option(..., "--type", help="blog or project."),
     status: str = typer.Option("draft", "--status", help="draft or published."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline markdown body."),
@@ -80,6 +81,7 @@ def article_create(
             "description": description,
             "slug": slug,
             "tags": tag,
+            "cover_image": cover_image,
             "type": article_type,
             "status": status,
             "markdown": body,
@@ -97,6 +99,8 @@ def article_update(
     title: str | None = typer.Option(None, "--title", help="New title."),
     description: str | None = typer.Option(None, "--description", help="New summary."),
     tag: list[str] | None = typer.Option(None, "--tag", help="Repeat for each tag."),
+    cover_image: str | None = typer.Option(None, "--cover-image", help="Uploaded media name for the article cover image."),
+    clear_cover_image: bool = typer.Option(False, "--clear-cover-image", help="Remove the article cover image."),
     article_type: str | None = typer.Option(None, "--type", help="blog or project."),
     status: str | None = typer.Option(None, "--status", help="draft or published."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline markdown body."),
@@ -106,6 +110,8 @@ def article_update(
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
     try:
+        if cover_image is not None and clear_cover_image:
+            raise CLIError("Use either --cover-image or --clear-cover-image, not both.")
         client = build_client(server_url, insecure=insecure)
         payload: dict[str, object] = {}
         if title is not None:
@@ -114,6 +120,10 @@ def article_update(
             payload["description"] = description
         if tag is not None:
             payload["tags"] = tag
+        if cover_image is not None:
+            payload["cover_image"] = cover_image
+        elif clear_cover_image:
+            payload["cover_image"] = None
         if article_type is not None:
             payload["type"] = article_type
         if status is not None:

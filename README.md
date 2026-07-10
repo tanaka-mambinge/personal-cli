@@ -45,6 +45,7 @@ blog-cli article create \
   --title "My Post" \
   --description "A short summary" \
   --type blog \
+  --cover-image my-post-cover \
   --markdown "# My Post\n\nHello."
 
 # List published blog posts
@@ -55,6 +56,10 @@ blog-cli article show my-post
 
 # Update an article
 blog-cli article update my-post --title "Better Title"
+
+# Set or clear the cover image
+blog-cli article update my-post --cover-image my-post-cover
+blog-cli article update my-post --clear-cover-image
 
 # Generate a 24h preview link for a draft
 blog-cli article preview my-post
