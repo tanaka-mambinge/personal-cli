@@ -18,60 +18,108 @@ def _build_client_mock(live_server: str):
     return lambda server_url=None, insecure=False: ArticleApiClient(live_server)
 
 
-def test_article_cli_smoke(monkeypatch, runner: CliRunner, live_server: str) -> None:
+def test_blog_cli_smoke(monkeypatch, runner: CliRunner, live_server: str) -> None:
     monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(live_server))
 
     create_result = runner.invoke(
         app,
         [
             "article",
+            "blog",
             "create",
             "--title",
-            "CLI Article",
+            "CLI Blog",
             "--description",
             "Created from the CLI",
-            "--type",
-            "blog",
             "--markdown",
-            "# CLI Article\n\nBody.",
-            "--tag",
-            "build",
-            "--tag",
-            "indie",
+            "# CLI Blog\n\nBody.",
             "--json",
         ],
     )
     assert create_result.exit_code == 0
     created = json.loads(create_result.stdout)
-    assert created["slug"] == "cli-article"
+    assert created["slug"] == "cli-blog"
     assert created["type"] == "blog"
+    assert created["tags"] == []
 
     list_result = runner.invoke(app, ["article", "list", "--type", "blog", "--json"])
     assert list_result.exit_code == 0
     listed = json.loads(list_result.stdout)
-    assert listed[0]["slug"] == "cli-article"
+    assert listed[0]["slug"] == "cli-blog"
 
-    publish_result = runner.invoke(app, ["article", "publish", "cli-article", "--published-by", "agent", "--json"])
+
+
+def test_project_cli_smoke(monkeypatch, runner: CliRunner, live_server: str) -> None:
+    monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(live_server))
+
+    create_result = runner.invoke(
+        app,
+        [
+            "article",
+            "project",
+            "create",
+            "--title",
+            "CLI Project",
+            "--description",
+            "Created from the CLI",
+            "--markdown",
+            "# CLI Project\n\nBody.",
+            "--tag",
+            "build",
+            "--pinned",
+            "--sort-order",
+            "1",
+            "--json",
+        ],
+    )
+    assert create_result.exit_code == 0
+    created = json.loads(create_result.stdout)
+    assert created["slug"] == "cli-project"
+    assert created["type"] == "project"
+    assert created["pinned"] is True
+    assert created["sort_order"] == 1
+    assert "build" in created["tags"]
+
+    list_result = runner.invoke(app, ["article", "list", "--type", "project", "--json"])
+    assert list_result.exit_code == 0
+    listed = json.loads(list_result.stdout)
+    assert listed[0]["slug"] == "cli-project"
+
+    publish_result = runner.invoke(app, ["article", "publish", "cli-project", "--published-by", "agent", "--json"])
     assert publish_result.exit_code == 0
     published = json.loads(publish_result.stdout)
     assert published["status"] == "published"
 
-    delete_result = runner.invoke(app, ["article", "delete", "cli-article", "--json"])
+    delete_result = runner.invoke(app, ["article", "delete", "cli-project", "--json"])
     assert delete_result.exit_code == 0
     deleted = json.loads(delete_result.stdout)
     assert deleted["deleted"] is True
-    assert deleted["slug"] == "cli-article"
+    assert deleted["slug"] == "cli-project"
     assert deleted["deleted_at"]
 
-    unarchive_result = runner.invoke(app, ["article", "unarchive", "cli-article", "--json"])
+    unarchive_result = runner.invoke(app, ["article", "unarchive", "cli-project", "--json"])
     assert unarchive_result.exit_code == 0
     unarchived = json.loads(unarchive_result.stdout)
-    assert unarchived["slug"] == "cli-article"
+    assert unarchived["slug"] == "cli-project"
     assert unarchived["status"] == "published"
 
-    empty_list = runner.invoke(app, ["article", "list", "--json"])
-    assert empty_list.exit_code == 0
-    assert json.loads(empty_list.stdout)[0]["slug"] == "cli-article"
+    all_list = runner.invoke(app, ["article", "list", "--json"])
+    assert all_list.exit_code == 0
+    assert json.loads(all_list.stdout)[0]["slug"] == "cli-project"
+
+    preview_result = runner.invoke(
+        app,
+        ["article", "preview", "cli-project", "--site-url", "http://testserver", "--json"],
+    )
+    assert preview_result.exit_code == 0
+    preview = json.loads(preview_result.stdout)
+    assert preview["url"].startswith("http://testserver/work/cli-project")
+    assert preview["token"]
+
+    revoke_result = runner.invoke(app, ["article", "revoke-preview", "cli-project", "--json"])
+    assert revoke_result.exit_code == 0
+    revoked = json.loads(revoke_result.stdout)
+    assert revoked["revoked"] == 1
 
 
 def test_media_cli_smoke(monkeypatch, runner: CliRunner, live_server: str, tmp_path) -> None:

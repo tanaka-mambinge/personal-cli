@@ -10,9 +10,13 @@ from personal_cli.formatting import emit_result, read_markdown_from_source
 
 app = typer.Typer(help="Agent-facing article CLI.")
 article_app = typer.Typer(help="Manage articles.")
+blog_app = typer.Typer(help="Manage blog posts.")
+project_app = typer.Typer(help="Manage projects.")
 media_app = typer.Typer(help="Manage media uploads.")
 
 app.add_typer(article_app, name="article")
+article_app.add_typer(blog_app, name="blog")
+article_app.add_typer(project_app, name="project")
 app.add_typer(media_app, name="media")
 
 
@@ -58,15 +62,51 @@ def article_show(
         raise typer.Exit(code=1) from exc
 
 
-@article_app.command("create")
-def article_create(
+@blog_app.command("create")
+def blog_create(
     title: str = typer.Option(..., "--title", help="Article title."),
     description: str = typer.Option(..., "--description", help="Short summary."),
     slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
-    tag: list[str] = typer.Option([], "--tag", help="Repeat for each tag."),
     cover_image: str | None = typer.Option(None, "--cover-image", help="Uploaded media name for the article cover image."),
-    article_type: str = typer.Option(..., "--type", help="blog or project."),
     status: str = typer.Option("draft", "--status", help="draft or published."),
+    markdown: str | None = typer.Option(None, "--markdown", help="Inline markdown body."),
+    markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    try:
+        body = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
+        client = build_client(server_url, insecure=insecure)
+        payload = {
+            "title": title,
+            "description": description,
+            "slug": slug,
+            "tags": [],
+            "cover_image": cover_image,
+            "type": "blog",
+            "status": status,
+            "pinned": False,
+            "sort_order": 0,
+            "markdown": body,
+        }
+        article = run(client.create_article(payload))
+        emit_result(article, json_output=json_output)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@project_app.command("create")
+def project_create(
+    title: str = typer.Option(..., "--title", help="Project title."),
+    description: str = typer.Option(..., "--description", help="Short summary."),
+    slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
+    tag: list[str] = typer.Option([], "--tag", help="Repeat for each tag."),
+    cover_image: str | None = typer.Option(None, "--cover-image", help="Uploaded media name for the project banner image."),
+    status: str = typer.Option("draft", "--status", help="draft or published."),
+    pinned: bool = typer.Option(False, "--pinned/--not-pinned", help="Pin to the home page."),
+    sort_order: int = typer.Option(0, "--sort-order", help="Order among pinned projects (lower first)."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline markdown body."),
     markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
     json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -82,8 +122,10 @@ def article_create(
             "slug": slug,
             "tags": tag,
             "cover_image": cover_image,
-            "type": article_type,
+            "type": "project",
             "status": status,
+            "pinned": pinned,
+            "sort_order": sort_order,
             "markdown": body,
         }
         article = run(client.create_article(payload))
@@ -103,6 +145,8 @@ def article_update(
     clear_cover_image: bool = typer.Option(False, "--clear-cover-image", help="Remove the article cover image."),
     article_type: str | None = typer.Option(None, "--type", help="blog or project."),
     status: str | None = typer.Option(None, "--status", help="draft or published."),
+    pinned: bool | None = typer.Option(None, "--pinned/--not-pinned", help="Pin or unpin a project."),
+    sort_order: int | None = typer.Option(None, "--sort-order", help="Order among pinned projects (lower first)."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline markdown body."),
     markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
     json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -128,6 +172,10 @@ def article_update(
             payload["type"] = article_type
         if status is not None:
             payload["status"] = status
+        if pinned is not None:
+            payload["pinned"] = pinned
+        if sort_order is not None:
+            payload["sort_order"] = sort_order
         if markdown is not None or markdown_file is not None:
             payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         article = run(client.update_article(slug, payload))
@@ -200,6 +248,22 @@ def article_preview(
         resolved_site_url = site_url or default_site_url
         client = build_client(server_url, insecure=insecure)
         result = run(client.generate_preview(slug, ttl_hours=ttl_hours, base_url=resolved_site_url))
+        emit_result(result, json_output=json_output)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@article_app.command("revoke-preview")
+def article_revoke_preview(
+    slug: str,
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    try:
+        client = build_client(server_url, insecure=insecure)
+        result = run(client.revoke_preview(slug))
         emit_result(result, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)

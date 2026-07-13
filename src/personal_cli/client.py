@@ -119,6 +119,10 @@ class ArticleApiClient:
         )
         return dict(result)
 
+    async def revoke_preview(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("DELETE", f"/api/v1/articles/{slug}/preview")
+        return dict(result)
+
     async def list_tags(self, slug: str) -> dict[str, Any]:
         result = await self._request_json("GET", f"/api/v1/articles/{slug}/tags")
         return dict(result)
