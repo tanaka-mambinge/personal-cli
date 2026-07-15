@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.metadata
 from pathlib import Path
 
 import typer
@@ -18,6 +19,18 @@ app.add_typer(article_app, name="article")
 article_app.add_typer(blog_app, name="blog")
 article_app.add_typer(project_app, name="project")
 app.add_typer(media_app, name="media")
+
+
+def get_version() -> str:
+    try:
+        return importlib.metadata.version("blog-cli")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
+
+
+@app.command("version")
+def cli_version() -> None:
+    typer.echo(get_version())
 
 
 def build_client(server_url: str | None = None, insecure: bool = False) -> ArticleApiClient:
