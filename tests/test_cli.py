@@ -82,6 +82,13 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def config_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PERSONAL_SERVER_URL", "http://testserver")
+    monkeypatch.setenv("PERSONAL_API_KEY", "test-key")
+    monkeypatch.setenv("PERSONAL_SITE_URL", "http://testsite")
+
+
 @pytest.fixture()
 def client() -> FakeApiClient:
     return FakeApiClient()
