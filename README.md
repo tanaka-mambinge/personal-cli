@@ -1,16 +1,16 @@
 # blog-cli
 
-Agent-friendly CLI for managing a personal blog. Create drafts, upload media, generate time-limited preview links — all from the command line.
-
-Designed for use by both humans and AI agents.
+Agent-friendly CLI for managing a personal blog: create drafts, upload media, generate preview links, publish articles, and manage project tags.
 
 ## Install
+
+From PyPI:
 
 ```bash
 pip install blog-cli
 ```
 
-Or via pipx/uv:
+Or install it as an isolated command-line tool:
 
 ```bash
 pipx install blog-cli
@@ -27,82 +27,193 @@ uv sync --extra dev
 
 ## Configure
 
-All three are required:
+The CLI requires the API URL and API key. The site URL is required for preview links.
 
 ```bash
-export PERSONAL_SERVER_URL="<your-server-url>"
-export PERSONAL_API_KEY="<your-api-key>"
-export PERSONAL_SITE_URL="<your-site-url>"
+export PERSONAL_SERVER_URL="https://api.example.com"
+export PERSONAL_API_KEY="your-api-key"
+export PERSONAL_SITE_URL="https://example.com"
 ```
 
-## Usage
+For local development, put the same variables in a `.env` file in the current directory. Do not commit that file.
 
-### Articles
+Production installations use the same environment variables. For example:
 
 ```bash
-# Create a draft
-blog-cli article create \
+PERSONAL_SERVER_URL="https://api.example.com" \
+PERSONAL_API_KEY="your-production-api-key" \
+PERSONAL_SITE_URL="https://example.com" \
+blog-cli article list --type blog
+```
+
+All commands support `--json` for machine-readable output and `--server-url` to override the configured API URL for one command. Commands also support `--insecure` to skip TLS certificate verification when needed for local development.
+
+Check the installed version:
+
+```bash
+blog-cli version
+```
+
+## Articles
+
+### Create a blog post
+
+Blog posts are drafts by default:
+
+```bash
+blog-cli article blog create \
   --title "My Post" \
   --description "A short summary" \
-  --type blog \
-  --cover-image my-post-cover \
   --markdown "# My Post\n\nHello."
+```
+
+Use a Markdown file instead:
+
+```bash
+blog-cli article blog create \
+  --title "My Post" \
+  --description "A short summary" \
+  --markdown-file post.md
+```
+
+### Create a project
+
+```bash
+blog-cli article project create \
+  --title "My Project" \
+  --description "A short summary" \
+  --tag python \
+  --tag agents \
+  --markdown-file project.md
+```
+
+Projects can also use `--pinned` and `--sort-order`.
+
+### List and show articles
+
+```bash
+# List all articles
+blog-cli article list
 
 # List published blog posts
-blog-cli article list --type blog
+blog-cli article list --type blog --status published
 
-# Show an article
+# List projects
+blog-cli article list --type project
+
+# Show one article
 blog-cli article show my-post
+```
 
-# Update an article
-blog-cli article update my-post --title "Better Title"
+### Update an article
 
-# Set or clear the cover image
-blog-cli article update my-post --cover-image my-post-cover
+```bash
+blog-cli article update my-post --title "A Better Title"
+blog-cli article update my-post --description "An updated summary"
+blog-cli article update my-post --markdown-file updated-post.md
+blog-cli article update my-post --cover-image hero-image
 blog-cli article update my-post --clear-cover-image
+```
 
-# Generate a 24h preview link for a draft
+The update command also accepts `--type`, `--status`, `--tag`, `--pinned`, `--not-pinned`, and `--sort-order`.
+
+### Preview and publish
+
+Generate a time-limited preview link:
+
+```bash
 blog-cli article preview my-post
-
-# Custom TTL (1–168 hours)
 blog-cli article preview my-post --ttl-hours 4
+```
 
-# Publish
+Override the configured site URL for a preview:
+
+```bash
+blog-cli article preview my-post --site-url https://preview.example.com
+```
+
+Revoke an existing preview link:
+
+```bash
+blog-cli article revoke-preview my-post
+```
+
+Publish an article explicitly:
+
+```bash
 blog-cli article publish my-post --published-by agent
+```
 
-# Delete (soft)
+Archive or restore an article:
+
+```bash
 blog-cli article delete my-post
-
-# Unarchive (restore deleted)
 blog-cli article unarchive my-post
 ```
 
-All commands support `--json` for machine-readable output and `--server-url` to override the server.
-
-### Media
+### Project tags
 
 ```bash
-# Upload (name is the unique key used in markdown)
+# List tags on a project
+blog-cli article tag-list my-project
+
+# Add tags
+blog-cli article tag-add my-project --tag python --tag agents
+
+# Remove a tag
+blog-cli article tag-remove my-project --tag agents
+```
+
+## Media
+
+Upload media using a stable name, then reference that name from article Markdown:
+
+```bash
 blog-cli media upload --name hero-image ./hero.jpg
+```
 
-# Update (replace the file, keep the name)
+Replace an existing file without changing its name:
+
+```bash
 blog-cli media update --name hero-image ./new-hero.jpg
+```
 
-# Delete (soft)
+Soft-delete media:
+
+```bash
 blog-cli media delete --name hero-image
 ```
 
-### Markdown Image References
-
-Upload media with a name, then reference it in article markdown:
+Markdown references use the media name:
 
 ```markdown
 ![Hero image](hero-image)
 
-<video controls width="100%" src="ambulance-video"></video>
+<video controls width="100%" src="demo-video"></video>
 ```
 
-The site resolves these to full URLs automatically.
+The site resolves these names to their full media URLs.
+
+## Publishing new CLI versions
+
+The repository includes a GitHub Actions workflow at `.github/workflows/publish.yml`. It runs when you push a version tag matching `v*.*.*` and will:
+
+1. Install dependencies with uv.
+2. Run the test suite.
+3. Build the wheel and source distribution with `uv build --no-sources`.
+4. Publish both distributions to PyPI with `uv publish`.
+
+After configuring PyPI Trusted Publishing for the GitHub Actions workflow, release a new version with:
+
+```bash
+uv version --bump patch
+git add pyproject.toml uv.lock
+git commit -m "Release blog-cli"
+git tag v0.2.4
+git push origin main --tags
+```
+
+Use the version from `pyproject.toml` when creating the tag.
 
 ## Testing
 
@@ -110,16 +221,11 @@ The site resolves these to full URLs automatically.
 uv run pytest -v
 ```
 
-Spins up a temp MongoDB + server via test fixtures. No external deps needed.
+The test fixtures start a temporary MongoDB-backed API server automatically. The CLI architecture is:
 
-## Architecture
-
+```text
+blog-cli (httpx) → FastAPI server → MongoDB/GridFS
 ```
-CLI (httpx) → FastAPI server → Motor/GridFS → MongoDB
-```
-
-- **Public endpoints** (GET) — list and read published articles, download media
-- **Protected endpoints** (POST/PATCH/PUT/DELETE) — require `Authorization: Bearer <key>`
 
 ## License
 

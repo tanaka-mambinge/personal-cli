@@ -12,4 +12,3 @@ build/
 *.pyc
 .env
 *.egg-info/
-uv.lock
