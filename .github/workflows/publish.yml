@@ -36,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: tanaka-mambinge/personal-server
+          token: ${{ secrets.PERSONAL_SERVER_READ_TOKEN }}
           path: personal-server
 
       - name: Install uv
