@@ -6,7 +6,7 @@
 uv run pytest -v
 ```
 
-Spins up a temp mongod + server automatically via test fixtures.
+Uses an in-memory fake API client; no external server or MongoDB is required.
 
 ## Running locally
 

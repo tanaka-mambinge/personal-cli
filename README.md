@@ -221,7 +221,7 @@ Use the version from `pyproject.toml` when creating the tag.
 uv run pytest -v
 ```
 
-The test fixtures start a temporary MongoDB-backed API server automatically. The CLI architecture is:
+The CLI tests use an in-memory fake API client, so they run without MongoDB or the personal server. The CLI architecture is:
 
 ```text
 blog-cli (httpx) → FastAPI server → MongoDB/GridFS
