@@ -32,6 +32,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check out API server for integration tests
+        uses: actions/checkout@v4
+        with:
+          repository: tanaka-mambinge/personal-server
+          path: personal-server
+
       - name: Install uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
