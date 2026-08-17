@@ -164,7 +164,7 @@ def project_create(
     description: str = typer.Option(..., "--description", help="Short summary."),
     slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
     tag: list[str] = typer.Option([], "--tag", help="Repeat for each tag."),
-    cover_image: str | None = typer.Option(None, "--cover-image", help="Uploaded media name for the project banner image."),
+    cover_image: str = typer.Option(..., "--cover-image", help="Uploaded media name for the project banner image."),
     status: str = typer.Option("draft", "--status", help="draft or published."),
     pinned: bool = typer.Option(False, "--pinned/--not-pinned", help="Pin to the home page."),
     sort_order: int = typer.Option(0, "--sort-order", help="Order among pinned projects (lower first)."),
@@ -221,6 +221,16 @@ def article_update(
         if cover_image is not None and clear_cover_image:
             raise CLIError("Use either --cover-image or --clear-cover-image, not both.")
         client = build_client(server_url, insecure=insecure)
+        current = next(
+            (article for article in run(client.list_articles(type_filter="all")) if article.get("slug") == slug),
+            None,
+        )
+        if current is None:
+            raise CLIError(f"Article not found: {slug}")
+        target_type = article_type or current.get("type")
+        resulting_cover = cover_image if cover_image is not None else current.get("cover_image")
+        if target_type == "project" and (clear_cover_image or not resulting_cover):
+            raise CLIError("Projects must have a cover image. Use --cover-image or keep the existing cover image.")
         payload: dict[str, object] = {}
         if title is not None:
             payload["title"] = title

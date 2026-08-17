@@ -188,6 +188,7 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
             "article", "project", "create",
             "--title", "CLI Project",
             "--description", "Created from the CLI",
+            "--cover-image", "cli-project-cover",
             "--markdown", "# CLI Project\n\nBody.",
             "--tag", "build",
             "--pinned",
@@ -240,6 +241,37 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
     revoke_result = runner.invoke(app, ["article", "revoke-preview", "cli-project", "--json"])
     assert revoke_result.exit_code == 0
     assert json.loads(revoke_result.stdout)["revoked"] == 1
+
+
+def test_project_cli_requires_cover_image(monkeypatch, runner: CliRunner, client: FakeApiClient) -> None:
+    monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(client))
+    result = runner.invoke(
+        app,
+        [
+            "article", "project", "create",
+            "--title", "Missing Cover",
+            "--description", "This should fail",
+            "--markdown", "# Missing Cover",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Missing option '--cover-image'" in result.output
+
+    create_result = runner.invoke(
+        app,
+        [
+            "article", "project", "create",
+            "--title", "Covered Project",
+            "--description", "This has a cover",
+            "--cover-image", "covered-project",
+            "--markdown", "# Covered Project",
+        ],
+    )
+    assert create_result.exit_code == 0
+
+    clear_result = runner.invoke(app, ["article", "update", "covered-project", "--clear-cover-image"])
+    assert clear_result.exit_code != 0
+    assert "Projects must have a cover image" in clear_result.output
 
 
 def test_media_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient, tmp_path: Path) -> None:
