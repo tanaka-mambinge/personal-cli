@@ -3,22 +3,33 @@ from __future__ import annotations
 import asyncio
 import importlib.metadata
 from pathlib import Path
+from typing import Callable, TypeVar
 
 import typer
 
-from personal_cli.client import ArticleApiClient, CLIError, get_default_config
+from personal_cli.client import ArticleApiClient, CLIError, get_config
+from personal_cli.credentials import (
+    CredentialError,
+    CredentialStore,
+    MissingCredentialError,
+)
 from personal_cli.formatting import emit_result, read_markdown_from_source
+from personal_cli.setup_server import run_setup
 
 app = typer.Typer(help="Agent-facing article CLI.")
 article_app = typer.Typer(help="Manage articles.")
 blog_app = typer.Typer(help="Manage blog posts.")
 project_app = typer.Typer(help="Manage projects.")
 media_app = typer.Typer(help="Manage media uploads.")
+keys_app = typer.Typer(help="Manage stored credentials.")
 
 app.add_typer(article_app, name="article")
 article_app.add_typer(blog_app, name="blog")
 article_app.add_typer(project_app, name="project")
 app.add_typer(media_app, name="media")
+app.add_typer(keys_app, name="keys")
+
+Result = TypeVar("Result")
 
 
 def get_version() -> str:
@@ -33,13 +44,41 @@ def cli_version() -> None:
     typer.echo(get_version())
 
 
-def build_client(server_url: str | None = None, insecure: bool = False) -> ArticleApiClient:
-    url, api_key, _ = get_default_config()
+def _emit(message: str) -> None:
+    typer.echo(message, err=True)
+
+
+def build_client(
+    server_url: str | None = None, insecure: bool = False
+) -> ArticleApiClient:
+    url, api_key, _ = get_config()
     return ArticleApiClient(server_url or url, api_key=api_key, verify=not insecure)
 
 
 def run(coro):
     return asyncio.run(coro)
+
+
+def _run(operation: Callable[[], Result]) -> Result:
+    """Run an operation, opening the setup page when credentials are missing/rejected."""
+    while True:
+        try:
+            return operation()
+        except MissingCredentialError:
+            run_setup(
+                CredentialStore(),
+                output=_emit,
+                prompt="Credentials are missing. Open this link in your browser",
+            )
+        except CLIError as exc:
+            if exc.status_code not in (401, 403):
+                raise
+            _emit("The server rejected the stored API key. Re-enter it in the setup page.")
+            run_setup(
+                CredentialStore(),
+                output=_emit,
+                prompt="Enter replacement credentials in your browser",
+            )
 
 
 @article_app.command("list")
@@ -50,10 +89,13 @@ def article_list(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         articles = run(client.list_articles(status=status, type_filter=type_filter))
         emit_result(articles, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -66,10 +108,13 @@ def article_show(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.get_article(slug))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -88,7 +133,7 @@ def blog_create(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         body = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         client = build_client(server_url, insecure=insecure)
         payload = {
@@ -105,6 +150,9 @@ def blog_create(
         }
         article = run(client.create_article(payload))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -126,7 +174,7 @@ def project_create(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         body = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         client = build_client(server_url, insecure=insecure)
         payload = {
@@ -143,6 +191,9 @@ def project_create(
         }
         article = run(client.create_article(payload))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -166,7 +217,7 @@ def article_update(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         if cover_image is not None and clear_cover_image:
             raise CLIError("Use either --cover-image or --clear-cover-image, not both.")
         client = build_client(server_url, insecure=insecure)
@@ -193,6 +244,9 @@ def article_update(
             payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         article = run(client.update_article(slug, payload))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -206,10 +260,13 @@ def article_publish(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.publish_article(slug, {"published_by": published_by} if published_by else None))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -222,10 +279,13 @@ def article_delete(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.delete_article(slug))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -238,10 +298,13 @@ def article_unarchive(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.unarchive_article(slug))
         emit_result(article, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -256,12 +319,15 @@ def article_preview(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
-        _, _, default_site_url = get_default_config()
+    def _op() -> None:
+        _, _, default_site_url = get_config()
         resolved_site_url = site_url or default_site_url
         client = build_client(server_url, insecure=insecure)
         result = run(client.generate_preview(slug, ttl_hours=ttl_hours, base_url=resolved_site_url))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -274,10 +340,13 @@ def article_revoke_preview(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.revoke_preview(slug))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -291,10 +360,13 @@ def tag_list(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.list_tags(slug))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -308,10 +380,13 @@ def tag_add(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.attach_tags(slug, tag))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -325,12 +400,15 @@ def tag_remove(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         for t in tag:
             run(client.remove_tag(slug, t))
         result = run(client.list_tags(slug))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -344,10 +422,13 @@ def media_upload(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.upload_media(name, path))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -361,10 +442,13 @@ def media_update(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.update_media(name, path))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -377,11 +461,52 @@ def media_delete(
     insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
     server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
 ) -> None:
-    try:
+    def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.delete_media(name))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
     except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@keys_app.command("revoke")
+def keys_revoke(
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+) -> None:
+    """Revoke the stored personal-cli credentials."""
+    try:
+        revoked = CredentialStore().remove()
+        emit_result(
+            {"revoked": revoked, "message": "Credentials revoked." if revoked else "No credentials were stored."},
+            json_output=json_output,
+        )
+    except CredentialError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@keys_app.command("show")
+def keys_show(
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+) -> None:
+    """Show whether credentials are stored (API key is masked)."""
+    try:
+        server_url, api_key, site_url = get_config()
+        emit_result(
+            {
+                "server_url": server_url,
+                "api_key": f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "****",
+                "site_url": site_url,
+            },
+            json_output=json_output,
+        )
+    except MissingCredentialError:
+        emit_result({"stored": False}, json_output=json_output)
+    except CredentialError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
 

@@ -136,39 +136,8 @@ class ArticleApiClient:
         return dict(result)
 
 
-def get_default_config() -> tuple[str, str | None, str]:
-    import os
-    _load_dotenv()
-    server_url = os.environ.get("PERSONAL_SERVER_URL")
-    if not server_url:
-        raise CLIError("PERSONAL_SERVER_URL is not set.")
-    api_key = os.environ.get("PERSONAL_API_KEY")
-    if not api_key:
-        raise CLIError("PERSONAL_API_KEY is not set.")
-    site_url = os.environ.get("PERSONAL_SITE_URL", "")
-    return (server_url, api_key, site_url)
+def get_config() -> tuple[str, str, str]:
+    """Read stored credentials from the OS credential store."""
+    from .credentials import CredentialStore
 
-
-def _load_dotenv() -> None:
-    import os
-    from pathlib import Path
-
-    candidates = [
-        Path.cwd() / ".env",
-        Path(__file__).resolve().parents[3] / ".env",
-    ]
-    for env_path in candidates:
-        if not env_path.exists():
-            continue
-        with env_path.open() as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip().strip("'\"")
-                os.environ[key] = value
-        break
+    return CredentialStore().get()

@@ -11,13 +11,13 @@ pip install blog-cli
 
 ## Config
 
-All three are required:
+Credentials are stored in the OS keyring. On first run (or after `keys revoke`)
+the CLI prints a one-time setup URL to stderr — open it in a browser, enter the
+server URL, API key, and site URL, and submit. They are validated against the
+server before saving.
 
-```bash
-export PERSONAL_SERVER_URL="<your-server-url>"
-export PERSONAL_API_KEY="<your-api-key>"
-export PERSONAL_SITE_URL="<your-site-url>"
-```
+For local development that must not touch production credentials, set
+`PERSONAL_CLI_ENV=dev` (keyring service becomes `personal-cli-dev`).
 
 ## Commands
 
