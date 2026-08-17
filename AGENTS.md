@@ -59,6 +59,7 @@ Rules:
 1. Create content as a draft unless the user explicitly says to publish / go live / ship it.
    - Blog: `uv run blog-cli article blog create --title ... --description ... --markdown ...`
    - Project: `uv run blog-cli article project create --title ... --description ... --markdown ...`
+   - Page (private dashboard): `uv run blog-cli page create --title ... --description ... --category <slug> --markdown ...`
 2. After creating or updating, do not automatically generate a preview link. If the user explicitly asks for a preview link, run:
    - `uv run blog-cli article preview <slug>`
 3. When a preview already exists, keep using its existing URL. Never revoke or regenerate it just because content was updated; updating the article changes the content behind the existing preview URL.
@@ -67,5 +68,17 @@ Rules:
    - `uv run blog-cli article publish <slug>`
 6. Blogs cannot have tags. If the user asks for tags on a blog, warn them.
 7. Only use `--pinned` / `--sort-order` for projects when the user asks.
+8. Pages are always private (no publish step). Categories must exist before creating a page in them. Create the category first with `uv run blog-cli category create --name <name>`.
+9. After every write to a page, share the `dashboard_url` from the CLI output with the user so they can open `/d/<slug>` in the browser. If a browser pane is already open on that tab, tell the user to reload it.
+
+## ChatGPT / Codex skill
+
+The CLI ships a bundled skill (`content-pipeline`) that routes blog/project/page tasks to the right reference. Install it with:
+
+```bash
+uv run blog-cli skill install
+```
+
+This copies `SKILL.md` plus `references/articles.md`, `references/projects.md`, and `references/pages.md` into `~/.agents/skills/content-pipeline/`. Uninstall with `uv run blog-cli skill uninstall`.
 
 This file is the source of truth for the skill. If the user says "update the skill", update this section.

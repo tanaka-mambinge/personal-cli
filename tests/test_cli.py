@@ -36,6 +36,12 @@ class FakeApiClient:
     def __init__(self) -> None:
         self.articles: dict[str, dict] = {}
         self.media: dict[str, dict] = {}
+        self.categories: dict[str, dict] = {}
+        self.pages: dict[str, dict] = {}
+        self._page_counter = 0
+
+    def _slugify(self, value: str) -> str:
+        return value.lower().replace(" ", "-")
 
     async def list_articles(self, *, status: str | None = None, type_filter: str = "all") -> list[dict]:
         articles = list(self.articles.values())
@@ -98,6 +104,82 @@ class FakeApiClient:
     async def delete_media(self, name: str) -> dict:
         self.media.pop(name, None)
         return {"deleted": True, "name": name}
+
+    # Categories
+    async def create_category(self, payload: dict) -> dict:
+        slug = self._slugify(payload["name"])
+        category = {
+            "id": slug,
+            "slug": slug,
+            "name": payload["name"],
+            "icon": payload.get("icon"),
+            "description": payload.get("description"),
+            "sort_order": payload.get("sort_order", 0),
+            "created_at": "2026-01-01T00:00:00Z",
+            "page_count": 0,
+        }
+        self.categories[slug] = category
+        return category
+
+    async def list_categories(self) -> list[dict]:
+        return list(self.categories.values())
+
+    async def get_category(self, slug: str) -> dict:
+        return self.categories[slug]
+
+    async def update_category(self, slug: str, payload: dict) -> dict:
+        category = self.categories[slug]
+        for key, value in payload.items():
+            category[key] = value
+        return category
+
+    async def delete_category(self, slug: str) -> dict:
+        if any(p["category_slug"] == slug for p in self.pages.values()):
+            raise Exception("Category in use")
+        self.categories.pop(slug, None)
+        return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
+
+    # Pages
+    async def create_page(self, payload: dict) -> dict:
+        slug = payload.get("slug") or self._slugify(payload["title"])
+        if slug in self.pages:
+            self._page_counter += 1
+            slug = f"{slug}-{self._page_counter}"
+        page = {
+            "id": slug,
+            "slug": slug,
+            "title": payload["title"],
+            "description": payload["description"],
+            "markdown": payload["markdown"],
+            "category_slug": payload["category_slug"],
+            "tags": payload.get("tags", []),
+            "sort_order": payload.get("sort_order", 0),
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+        self.pages[slug] = page
+        return page
+
+    async def list_pages(self, *, category: str | None = None, tag: str | None = None) -> list[dict]:
+        pages = list(self.pages.values())
+        if category is not None:
+            pages = [p for p in pages if p["category_slug"] == category]
+        if tag is not None:
+            pages = [p for p in pages if tag in p["tags"]]
+        return pages
+
+    async def get_page(self, slug: str) -> dict:
+        return self.pages[slug]
+
+    async def update_page(self, slug: str, payload: dict) -> dict:
+        page = self.pages[slug]
+        for key, value in payload.items():
+            page[key] = value
+        return page
+
+    async def delete_page(self, slug: str) -> dict:
+        self.pages.pop(slug, None)
+        return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
 
 
 VALID_CREDS = {

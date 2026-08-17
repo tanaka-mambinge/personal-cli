@@ -135,6 +135,51 @@ class ArticleApiClient:
         result = await self._request_json("DELETE", f"/api/v1/articles/{slug}/tags", params={"tag": tag})
         return dict(result)
 
+    # Categories
+    async def create_category(self, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("POST", "/api/v1/categories", json=payload)
+        return dict(result)
+
+    async def list_categories(self) -> list[dict[str, Any]]:
+        result = await self._request_json("GET", "/api/v1/categories")
+        return list(result or [])
+
+    async def get_category(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("GET", f"/api/v1/categories/{slug}")
+        return dict(result)
+
+    async def update_category(self, slug: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("PATCH", f"/api/v1/categories/{slug}", json=payload)
+        return dict(result)
+
+    async def delete_category(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("DELETE", f"/api/v1/categories/{slug}")
+        return dict(result or {})
+
+    # Pages
+    async def create_page(self, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("POST", "/api/v1/pages", json=payload)
+        return dict(result)
+
+    async def list_pages(self, *, category: str | None = None) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {}
+        if category is not None:
+            params["category"] = category
+        result = await self._request_json("GET", "/api/v1/pages", params=params)
+        return list(result or [])
+
+    async def get_page(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("GET", f"/api/v1/pages/{slug}")
+        return dict(result)
+
+    async def update_page(self, slug: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("PATCH", f"/api/v1/pages/{slug}", json=payload)
+        return dict(result)
+
+    async def delete_page(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("DELETE", f"/api/v1/pages/{slug}")
+        return dict(result or {})
+
 
 def get_config() -> tuple[str, str, str]:
     """Read stored credentials from the OS credential store."""

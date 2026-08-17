@@ -164,6 +164,57 @@ blog-cli article tag-add my-project --tag python --tag agents
 blog-cli article tag-remove my-project --tag agents
 ```
 
+## Categories
+
+Categories are first-class models that group private content pages. The slug is auto-derived from the name. A category cannot be deleted while pages still belong to it.
+
+```bash
+# Create (slug auto from name, e.g. "YouTube Notes" -> "youtube-notes")
+blog-cli category create --name "Ideas" --icon bulb --description "Captured ideas"
+
+# List / show / update / delete
+blog-cli category list
+blog-cli category show ideas
+blog-cli category update ideas --name "Idea Box" --icon lightbulb
+blog-cli category delete ideas
+```
+
+## Pages
+
+Pages are private content shown only on the dashboard at `/d/<slug>`. They are for your eyes only. Each page belongs to a category and supports MDX with prebuilt components (`<Callout>`, `<Steps>`, `<ImageGrid>`, `<Video>`, `<Figure>`).
+
+```bash
+# Create a page
+blog-cli page create \
+  --title "An idea" \
+  --description "Short summary" \
+  --category ideas \
+  --tag web --tag ai \
+  --markdown-file idea.mdx
+
+# List (optionally filter by category)
+blog-cli page list
+blog-cli page list --category ideas
+
+# Show / update / delete
+blog-cli page show an-idea
+blog-cli page update an-idea --title "A better title"
+blog-cli page update an-idea --markdown-file updated.mdx
+blog-cli page delete an-idea
+```
+
+Page bodies are MDX. Referenced media uses names uploaded via `blog-cli media upload --name <name> <file>`; the site resolves names to media URLs at render time.
+
+## ChatGPT / Codex skill
+
+The CLI ships a bundled `content-pipeline` skill that routes blog, project, and page tasks to the right reference doc. Install it into the user-level skills directory:
+
+```bash
+blog-cli skill install
+blog-cli skill uninstall
+blog-cli skill path
+```
+
 ## Media
 
 Upload media using a stable name, then reference that name from article Markdown:
