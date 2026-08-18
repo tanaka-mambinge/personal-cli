@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blog-cli"
-version = "0.4.0"
+version = "0.4.1"
 description = "Agent-friendly CLI for managing a personal site. Articles, projects, categories, private pages, media, and a bundled ChatGPT/Codex skill."
 readme = "README.md"
 requires-python = ">=3.13"
