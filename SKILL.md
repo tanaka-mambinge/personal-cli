@@ -6,7 +6,7 @@ description: Use blog-cli to create and manage writing articles. Supports drafts
 ## Install
 
 ```bash
-pip install blog-cli
+pip install -U blog-cli
 ```
 
 ## Config

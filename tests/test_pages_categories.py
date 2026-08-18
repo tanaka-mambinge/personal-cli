@@ -233,22 +233,7 @@ def test_page_lifecycle(monkeypatch, runner):
     assert json.loads(delete.stdout)["deleted"] is True
 
 
-def test_skill_path_and_install(monkeypatch, runner, tmp_path):
-    target = tmp_path / "skills"
-    path_result = runner.invoke(app, ["skill", "path", "--dir", str(target), "--json"])
-    assert path_result.exit_code == 0
-    assert json.loads(path_result.stdout)["path"].endswith("content-pipeline")
-
-    install = runner.invoke(app, ["skill", "install", "--dir", str(target), "--json"])
-    assert install.exit_code == 0
-    installed = json.loads(install.stdout)
-    assert installed["installed"] is True
-    skill_root = tmp_path / "skills" / "content-pipeline"
-    assert (skill_root / "SKILL.md").exists()
-    assert (skill_root / "references" / "pages.md").exists()
-    assert (skill_root / "agents" / "openai.yaml").exists()
-
-    uninstall = runner.invoke(app, ["skill", "uninstall", "--dir", str(target), "--json"])
-    assert uninstall.exit_code == 0
-    assert json.loads(uninstall.stdout)["uninstalled"] is True
-    assert not skill_root.exists()
+def test_skill_command_is_removed(runner):
+    result = runner.invoke(app, ["skill"])
+    assert result.exit_code != 0
+    assert "No such command 'skill'" in result.output

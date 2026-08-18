@@ -6,34 +6,34 @@ Blog posts are public articles on the personal site. They live under `/writing/<
 
 ```bash
 # Create a draft (default)
-uv run blog-cli article blog create \
+blog-cli article blog create \
   --title "My Post" \
   --description "A short summary" \
   --markdown "# My Post\n\nHello."
 
 # Create from a markdown file
-uv run blog-cli article blog create \
+blog-cli article blog create \
   --title "My Post" \
   --description "A short summary" \
   --markdown-file post.md
 
 # List / show
-uv run blog-cli article list --type blog
-uv run blog-cli article show my-post
+blog-cli article list --type blog
+blog-cli article show my-post
 
 # Update
-uv run blog-cli article update my-post --title "A Better Title"
-uv run blog-cli article update my-post --markdown-file updated-post.md
+blog-cli article update my-post --title "A Better Title"
+blog-cli article update my-post --markdown-file updated-post.md
 
 # Preview link (only when the user asks)
-uv run blog-cli article preview my-post
+blog-cli article preview my-post
 
 # Publish (only when the user explicitly says to publish / go live / ship it)
-uv run blog-cli article publish my-post --published-by agent
+blog-cli article publish my-post --published-by agent
 
 # Archive / restore
-uv run blog-cli article delete my-post
-uv run blog-cli article unarchive my-post
+blog-cli article delete my-post
+blog-cli article unarchive my-post
 ```
 
 ## Rules

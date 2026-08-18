@@ -6,7 +6,7 @@ Projects are public showcase entries on the personal site. They live under `/wor
 
 ```bash
 # Create a project draft (a cover image is required)
-uv run blog-cli article project create \
+blog-cli article project create \
   --title "My Project" \
   --description "A short summary" \
   --cover-image hero-image \
@@ -15,28 +15,28 @@ uv run blog-cli article project create \
   --markdown-file project.md
 
 # List / show
-uv run blog-cli article list --type project
-uv run blog-cli article show my-project
+blog-cli article list --type project
+blog-cli article show my-project
 
 # Update (can change title, description, tags, cover image, status, pinned, sort-order)
-uv run blog-cli article update my-project --title "A Better Title"
-uv run blog-cli article update my-project --cover-image new-hero
-uv run blog-cli article update my-project --clear-cover-image
+blog-cli article update my-project --title "A Better Title"
+blog-cli article update my-project --cover-image new-hero
+blog-cli article update my-project --clear-cover-image
 
 # Project tags
-uv run blog-cli article tag-list my-project
-uv run blog-cli article tag-add my-project --tag python --tag agents
-uv run blog-cli article tag-remove my-project --tag agents
+blog-cli article tag-list my-project
+blog-cli article tag-add my-project --tag python --tag agents
+blog-cli article tag-remove my-project --tag agents
 
 # Preview link (only when the user asks)
-uv run blog-cli article preview my-project
+blog-cli article preview my-project
 
 # Publish (only when the user explicitly says to publish)
-uv run blog-cli article publish my-project --published-by agent
+blog-cli article publish my-project --published-by agent
 
 # Archive / restore
-uv run blog-cli article delete my-project
-uv run blog-cli article unarchive my-project
+blog-cli article delete my-project
+blog-cli article unarchive my-project
 ```
 
 ## Rules

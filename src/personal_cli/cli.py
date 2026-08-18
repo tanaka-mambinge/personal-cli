@@ -24,7 +24,6 @@ media_app = typer.Typer(help="Manage media uploads.")
 keys_app = typer.Typer(help="Manage stored credentials.")
 category_app = typer.Typer(help="Manage content categories.")
 page_app = typer.Typer(help="Manage private content pages.")
-skill_app = typer.Typer(help="Manage the bundled ChatGPT/Codex skill.")
 
 app.add_typer(article_app, name="article")
 article_app.add_typer(blog_app, name="blog")
@@ -33,7 +32,6 @@ app.add_typer(media_app, name="media")
 app.add_typer(keys_app, name="keys")
 app.add_typer(category_app, name="category")
 app.add_typer(page_app, name="page")
-app.add_typer(skill_app, name="skill")
 
 Result = TypeVar("Result")
 
@@ -799,66 +797,6 @@ def page_delete(
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
-
-
-# ---------------------------------------------------------------------------
-# Skill installation
-# ---------------------------------------------------------------------------
-
-
-@skill_app.command("install")
-def skill_install(
-    target_dir: Path | None = typer.Option(
-        None,
-        "--dir",
-        help="Destination directory. Defaults to ~/.agents/skills/content-pipeline.",
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-) -> None:
-    """Install the bundled ChatGPT/Codex skill into the agents skills directory."""
-    from personal_cli.skill import install_skill
-
-    try:
-        destination = install_skill(target_dir)
-        emit_result(
-            {"installed": True, "path": str(destination)},
-            json_output=json_output,
-        )
-    except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@skill_app.command("uninstall")
-def skill_uninstall(
-    target_dir: Path | None = typer.Option(
-        None,
-        "--dir",
-        help="Installed location. Defaults to ~/.agents/skills/content-pipeline.",
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-) -> None:
-    """Remove the installed skill."""
-    from personal_cli.skill import uninstall_skill
-
-    try:
-        removed = uninstall_skill(target_dir)
-        emit_result({"uninstalled": removed}, json_output=json_output)
-    except Exception as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@skill_app.command("path")
-def skill_path(
-    target_dir: Path | None = typer.Option(None, "--dir", help="Custom install location."),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-) -> None:
-    """Print where the skill would be installed."""
-    from personal_cli.skill import skill_install_path
-
-    destination = skill_install_path(target_dir)
-    emit_result({"path": str(destination)}, json_output=json_output)
 
 
 def main() -> None:

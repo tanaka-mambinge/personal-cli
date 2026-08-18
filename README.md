@@ -7,7 +7,7 @@ Agent-friendly CLI for managing a personal blog: create drafts, upload media, ge
 From PyPI:
 
 ```bash
-pip install blog-cli
+pip install -U blog-cli
 ```
 
 Or install it as an isolated command-line tool:

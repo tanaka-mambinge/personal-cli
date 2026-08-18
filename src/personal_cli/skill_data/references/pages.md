@@ -10,18 +10,18 @@ A category is a first-class model. The slug is auto-derived from the name. Categ
 
 ```bash
 # Create a category (slug auto from name, e.g. "YouTube Notes" -> "youtube-notes")
-uv run blog-cli category create --name "Ideas" --icon bulb --description "Captured ideas"
-uv run blog-cli category create --name "YouTube" --icon video
+blog-cli category create --name "Ideas" --icon bulb --description "Captured ideas"
+blog-cli category create --name "YouTube" --icon video
 
 # List / show
-uv run blog-cli category list
-uv run blog-cli category show ideas
+blog-cli category list
+blog-cli category show ideas
 
 # Update
-uv run blog-cli category update ideas --name "Idea Box" --icon lightbulb --sort-order 1
+blog-cli category update ideas --name "Idea Box" --icon lightbulb --sort-order 1
 
 # Delete (fails if pages still belong to it; reassign or delete those pages first)
-uv run blog-cli category delete ideas
+blog-cli category delete ideas
 ```
 
 ### Pages
@@ -29,26 +29,26 @@ uv run blog-cli category delete ideas
 ```bash
 # Create a page (draft-first still applies — no separate publish step exists for pages,
 # but write the content as if it is for your eyes only)
-uv run blog-cli page create \
+blog-cli page create \
   --title "An idea" \
   --description "Short summary" \
   --category ideas \
   --markdown-file idea.mdx
 
 # List (optionally filter by category)
-uv run blog-cli page list
-uv run blog-cli page list --category ideas
+blog-cli page list
+blog-cli page list --category ideas
 
 # Show one
-uv run blog-cli page show an-idea
+blog-cli page show an-idea
 
 # Update
-uv run blog-cli page update an-idea --title "A better title"
-uv run blog-cli page update an-idea --markdown-file updated-idea.mdx
-uv run blog-cli page update an-idea --category youtube
+blog-cli page update an-idea --title "A better title"
+blog-cli page update an-idea --markdown-file updated-idea.mdx
+blog-cli page update an-idea --category youtube
 
 # Delete
-uv run blog-cli page delete an-idea
+blog-cli page delete an-idea
 ```
 
 ## MDX components
