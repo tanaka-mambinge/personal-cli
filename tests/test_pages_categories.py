@@ -120,20 +120,20 @@ def runner() -> CliRunner:
 
 @pytest.fixture(autouse=True)
 def credential_store(monkeypatch: pytest.MonkeyPatch) -> FakeKeyringBackend:
-    backend = FakeKeyringBackend()
+    fake_backend = FakeKeyringBackend()
     real_init = CredentialStore.__init__
 
     def _init(self, backend=None):
-        real_init(self, backend=backend)
+        real_init(self, backend=fake_backend)
 
     monkeypatch.setattr(CredentialStore, "__init__", _init)
-    store = CredentialStore()
+    store = CredentialStore(backend=fake_backend)
     store.add(
         server_url=VALID_CREDS["server_url"],
         api_key=VALID_CREDS["api_key"],
         site_url=VALID_CREDS["site_url"],
     )
-    return backend
+    return fake_backend
 
 
 @pytest.fixture(autouse=True)
