@@ -6,7 +6,11 @@
 uv run pytest -v
 ```
 
-Uses an in-memory fake API client; no external server or MongoDB is required.
+The full suite is service-free: it runs the real CLI command wiring against
+in-memory fake API and keyring backends. It does not require the personal
+server, MongoDB, stored credentials, a native OS keyring, a browser, or any
+network service at test runtime. A first-time `uv` setup may still download
+Python packages from the lockfile.
 
 ## Running locally
 
@@ -28,6 +32,14 @@ For local development that must not touch production credentials, set
 ```bash
 PERSONAL_CLI_ENV=dev uv run blog-cli article list
 ```
+
+For production, leave `PERSONAL_CLI_ENV` unset so the CLI uses the
+`personal-cli` keyring service. Only `PERSONAL_CLI_ENV=dev` (case-insensitive,
+with surrounding whitespace ignored) selects the separate `personal-cli-dev`
+service. Publishing the CLI package through GitHub Actions
+and PyPI does not read either keyring or publish articles; a production
+automation job that runs `blog-cli` must be provisioned with production
+credentials separately.
 
 Revoke stored credentials with:
 

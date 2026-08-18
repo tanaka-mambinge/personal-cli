@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,13 @@ from personal_cli.credentials import (
     CredentialStore,
     MissingCredentialError,
 )
+
+
+_ANSI_ESCAPE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def _plain_output(value: str) -> str:
+    return _ANSI_ESCAPE.sub("", value)
 
 
 class FakeKeyringBackend:
@@ -337,7 +345,7 @@ def test_project_cli_requires_cover_image(monkeypatch, runner: CliRunner, client
         ],
     )
     assert result.exit_code != 0
-    assert "Missing option '--cover-image'" in result.output
+    assert "Missing option '--cover-image'" in _plain_output(result.output)
 
     create_result = runner.invoke(
         app,
