@@ -1,6 +1,6 @@
 interface:
   display_name: "Content pipeline"
-  short_description: "Blog posts, projects, and private dashboard pages."
+  short_description: "Blog posts, projects, public services, and private dashboard pages."
   brand_color: "#0F172A"
 
 policy:

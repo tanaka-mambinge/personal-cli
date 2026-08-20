@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import html
-import os
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -49,7 +48,7 @@ h2 {{ margin: 0 0 .5rem; font-size: 1.5rem; letter-spacing: -.02em; }}
   <div class="modal">
     <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
     <h2>Credentials saved</h2>
-    <p>Your server URL, API key, and site URL are stored in your operating system credential store. You can close this browser window.</p>
+    <p>Your server URL, API key, and site URL are stored in the configured credential store. You can close this browser window.</p>
   </div>
 </dialog>
 </body></html>""".encode("utf-8")
@@ -83,7 +82,7 @@ button:hover {{ background: #4256d6; }}
 .footnote {{ color: #667085; font-size: .8rem; text-align: center; margin-top: 1.5rem; }}
 </style></head>
 <body><main class="shell"><div class="eyebrow">Personal CLI</div><h1>Connect your backend</h1>
-<p class="intro">Enter your personal server URL, API key, and site URL. They are saved to your operating system credential store and never sent to the agent chat.</p>
+<p class="intro">Enter your personal server URL, API key, and site URL. They are saved to the configured credential store and never sent to the agent chat.</p>
 {message_html}
 <form method="post" action="{html.escape(action)}" class="card">
 <label for="server-url">Server URL</label>
@@ -172,6 +171,8 @@ class _SetupHandler(BaseHTTPRequestHandler):
         if self.server.consumed:
             self._send(410, _page("This setup link has already been used.", error=True))
             return
+        server_url = ""
+        site_url = ""
         try:
             length = min(int(self.headers.get("Content-Length", "0")), 64 * 1024)
             values = parse_qs(
@@ -200,7 +201,16 @@ class _SetupHandler(BaseHTTPRequestHandler):
                 server_url=server_url, api_key=api_key, site_url=site_url
             )
         except (ValueError, UnicodeDecodeError, CredentialError) as exc:
-            self._send(400, _page(str(exc), error=True, token=self.server.token))
+            self._send(
+                400,
+                _page(
+                    str(exc),
+                    error=True,
+                    token=self.server.token,
+                    server_url=server_url,
+                    site_url=site_url,
+                ),
+            )
             return
 
         self.server.consumed = True
@@ -218,7 +228,7 @@ def run_setup(
     server = _SetupServer(
         store,
         token,
-        bind_host=os.environ.get("PERSONAL_CLI_SETUP_BIND_HOST", "127.0.0.1"),
+        bind_host="127.0.0.1",
     )
     url = f"http://127.0.0.1:{server.server_port}{SETUP_PATH}?{urlencode({'token': token})}"
     output(f"{prompt}: {url}")

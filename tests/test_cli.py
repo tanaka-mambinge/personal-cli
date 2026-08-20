@@ -46,6 +46,7 @@ class FakeApiClient:
         self.media: dict[str, dict] = {}
         self.categories: dict[str, dict] = {}
         self.pages: dict[str, dict] = {}
+        self.services: dict[str, dict] = {}
         self._page_counter = 0
 
     def _slugify(self, value: str) -> str:
@@ -96,10 +97,12 @@ class FakeApiClient:
         return article
 
     async def generate_preview(self, slug: str, *, ttl_hours: int, base_url: str) -> dict:
-        return {"url": f"{base_url}/work/{slug}?token=test-token", "token": "test-token"}
-
-    async def revoke_preview(self, slug: str) -> dict:
-        return {"revoked": 1}
+        prefix = "work" if self.articles[slug]["type"] == "project" else "writing"
+        return {
+            "url": f"{base_url}/{prefix}/{slug}?preview=test-token",
+            "token": "test-token",
+            "expires_at": "2026-01-02T00:00:00Z",
+        }
 
     async def upload_media(self, name: str, path: Path) -> dict:
         media = {"name": name, "url": f"/api/v1/media/{name}"}
@@ -189,6 +192,41 @@ class FakeApiClient:
         self.pages.pop(slug, None)
         return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
 
+    # Services
+    async def create_service(self, payload: dict) -> dict:
+        slug = payload.get("slug") or self._slugify(payload["title"])
+        service = {
+            "slug": slug,
+            "title": payload["title"],
+            "summary": payload["summary"],
+            "markdown": payload["markdown"],
+            "category": payload["category"],
+            "types": payload.get("types", []),
+            "offerings": payload.get("offerings", []),
+            "examples": payload.get("examples", []),
+            "featured": payload.get("featured", False),
+            "sort_order": payload.get("sort_order", 0),
+        }
+        self.services[slug] = service
+        return service
+
+    async def list_services(self, *, category: str | None = None) -> list[dict]:
+        services = list(self.services.values())
+        if category is not None:
+            services = [service for service in services if service["category"] == category]
+        return services
+
+    async def get_service(self, slug: str) -> dict:
+        return self.services[slug]
+
+    async def update_service(self, slug: str, payload: dict) -> dict:
+        self.services[slug].update(payload)
+        return self.services[slug]
+
+    async def delete_service(self, slug: str) -> dict:
+        self.services.pop(slug, None)
+        return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
+
 
 VALID_CREDS = {
     "server_url": "http://testserver",
@@ -264,6 +302,8 @@ def test_blog_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient) -
     assert created["slug"] == "cli-blog"
     assert created["type"] == "blog"
     assert created["tags"] == []
+    assert created["url"] == "http://testsite/writing/cli-blog?preview=test-token"
+    assert created["preview_url"] == created["url"]
 
     list_result = runner.invoke(app, ["article", "list", "--type", "blog", "--json"])
     assert list_result.exit_code == 0
@@ -293,6 +333,7 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
     assert created["pinned"] is True
     assert created["sort_order"] == 1
     assert "build" in created["tags"]
+    assert created["url"] == "http://testsite/work/cli-project?preview=test-token"
 
     list_result = runner.invoke(app, ["article", "list", "--type", "project", "--json"])
     assert list_result.exit_code == 0
@@ -300,7 +341,9 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
 
     publish_result = runner.invoke(app, ["article", "publish", "cli-project", "--published-by", "agent", "--json"])
     assert publish_result.exit_code == 0
-    assert json.loads(publish_result.stdout)["status"] == "published"
+    published = json.loads(publish_result.stdout)
+    assert published["status"] == "published"
+    assert published["url"] == "http://testsite/work/cli-project"
 
     delete_result = runner.invoke(app, ["article", "delete", "cli-project", "--json"])
     assert delete_result.exit_code == 0
@@ -314,6 +357,7 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
     unarchived = json.loads(unarchive_result.stdout)
     assert unarchived["slug"] == "cli-project"
     assert unarchived["status"] == "published"
+    assert unarchived["url"] == "http://testsite/work/cli-project"
 
     all_list = runner.invoke(app, ["article", "list", "--json"])
     assert all_list.exit_code == 0
@@ -327,11 +371,6 @@ def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient
     preview = json.loads(preview_result.stdout)
     assert preview["url"].startswith("http://testserver/work/cli-project")
     assert preview["token"]
-
-    revoke_result = runner.invoke(app, ["article", "revoke-preview", "cli-project", "--json"])
-    assert revoke_result.exit_code == 0
-    assert json.loads(revoke_result.stdout)["revoked"] == 1
-
 
 def test_project_cli_requires_cover_image(monkeypatch, runner: CliRunner, client: FakeApiClient) -> None:
     monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(client))
@@ -362,6 +401,40 @@ def test_project_cli_requires_cover_image(monkeypatch, runner: CliRunner, client
     clear_result = runner.invoke(app, ["article", "update", "covered-project", "--clear-cover-image"])
     assert clear_result.exit_code != 0
     assert "Projects must have a cover image" in clear_result.output
+
+
+def test_service_cli_lifecycle(monkeypatch, runner: CliRunner, client: FakeApiClient) -> None:
+    monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(client))
+
+    create_result = runner.invoke(
+        app,
+        [
+            "service", "create",
+            "--title", "Web",
+            "--summary", "Websites and web apps.",
+            "--category", "Web",
+            "--type", "Static websites",
+            "--type", "Web apps with a database",
+            "--offering", "Static websites|Fast, focused sites for a clear message.|/stock/web.webp",
+            "--example", "Example project|/work/example-project",
+            "--markdown", "## Web\n\nDetails.",
+            "--json",
+        ],
+    )
+    assert create_result.exit_code == 0
+    created = json.loads(create_result.stdout)
+    assert created["slug"] == "web"
+    assert created["url"] == "http://testsite/services/web"
+    assert created["types"] == ["Static websites", "Web apps with a database"]
+    assert created["offerings"][0]["title"] == "Static websites"
+
+    update_result = runner.invoke(app, ["service", "update", "web", "--clear-examples", "--json"])
+    assert update_result.exit_code == 0
+    assert json.loads(update_result.stdout)["examples"] == []
+
+    list_result = runner.invoke(app, ["service", "list", "--category", "Web", "--json"])
+    assert list_result.exit_code == 0
+    assert json.loads(list_result.stdout)[0]["url"] == "http://testsite/services/web"
 
 
 def test_media_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient, tmp_path: Path) -> None:

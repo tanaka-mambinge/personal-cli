@@ -1,6 +1,6 @@
 ---
 name: blog-cli
-description: Use blog-cli to create and manage writing articles. Supports drafts, media uploads, time-limited preview links, and publishing only when explicitly requested. Use when creating, updating, or previewing articles from the command line. Never publish unless the user explicitly says to publish.
+description: Use blog-cli to create and manage writing articles, projects, and immediately published service categories. Supports drafts for articles/projects, media uploads, structured service offerings, and service example links.
 ---
 
 ## Install
@@ -11,15 +11,42 @@ pip install -U blog-cli
 
 ## Config
 
-Credentials are stored in the OS keyring. On first run (or after `keys revoke`)
-the CLI prints a one-time setup URL to stderr — open it in a browser, enter the
-server URL, API key, and site URL, and submit. They are validated against the
-server before saving.
+Credentials are stored in the configured keyring backend. On first run the CLI
+prints a setup URL to stderr — open it in a browser, enter the server URL, API
+key, and site URL, and submit. They are validated against the server before
+saving. Local development commands use the Docker runner, which has its own
+file-backed keyring and never accesses the host keyring.
 
-For local development that must not touch production credentials, set
-`PERSONAL_CLI_ENV=dev` (keyring service becomes `personal-cli-dev`).
+When credentials are missing during a Docker run, the agent must keep the
+interactive command attached and immediately relay the exact setup URL from
+stderr as a clickable link. The user enters the server URL, API key, and site
+URL on that page. Do not report missing keyring credentials as the final result,
+ask the user to paste secrets into chat, start another setup session, or issue
+a replacement link while the current session is alive. After submission, allow
+the original command to retry and share the resulting content link.
 
 ## Commands
+
+### `blog-cli service create`
+
+- Required: `--title`, `--summary`, `--category`, `--markdown` or `--markdown-file`
+- Repeat `--offering` with `Title|Explanation[|MediaNameOrImageURL]` for individual services under the category
+- Repeat `--type` only for short labels when needed
+- Repeat `--example` with `Title|URL` for links to existing work examples
+- Services are published immediately and return a public `/services/<slug>` URL
+
+### `blog-cli service update <slug>`
+
+- Optional: `--title`, `--summary`, `--category`, repeated `--offering`, repeated `--type`, `--example`, `--markdown`, `--featured`, `--sort-order`
+- Use `--clear-offerings`, `--clear-types`, or `--clear-examples` to remove lists
+
+### `blog-cli service list` / `blog-cli service show <slug>`
+
+- Reads the service categories currently stored in the database
+
+### `blog-cli service delete <slug>`
+
+- Removes a service category from public listings
 
 ### `blog-cli article create`
 
@@ -157,7 +184,7 @@ Names map to `/api/v1/media/{name}`. The site resolves them to full URLs.
 1. Create draft with `article create` (defaults to draft)
 2. Upload media with `media upload --name <name> <path>`
 3. Reference media by name in markdown
-4. Generate preview link with `article preview <slug>`
-5. Share the temporary preview link — recipient sees the draft with a countdown banner
+4. Use the preview URL returned by the create/update command; preview generation reuses the active token.
+5. Share the returned article/project URL automatically — the user should not need to ask for it.
 6. Only publish with `article publish <slug>` if the user explicitly says to publish
 7. Always pass `--json` for programmatic inspection

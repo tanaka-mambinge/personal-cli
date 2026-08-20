@@ -28,7 +28,7 @@ blog-cli article tag-list my-project
 blog-cli article tag-add my-project --tag python --tag agents
 blog-cli article tag-remove my-project --tag agents
 
-# Preview link (only when the user asks)
+# Preview link (returned automatically for drafts)
 blog-cli article preview my-project
 
 # Publish (only when the user explicitly says to publish)
@@ -46,5 +46,6 @@ blog-cli article unarchive my-project
 - Projects can have tags; blogs cannot.
 - Only use `--pinned` / `--sort-order` when the user asks. Lower `--sort-order` sorts first among pinned projects.
 - Keep existing preview links stable. Never revoke or regenerate just because content was updated.
+- Always share the returned public or preview URL with the user after a successful operation.
 - Plain typography. No emoji, arrows, or dingbats unless explicitly requested.
 - Plain Markdown for body content (no MDX components on projects in v1).

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 import keyring
@@ -21,12 +20,6 @@ class MissingCredentialError(CredentialError):
     """No credentials have been stored yet."""
 
 
-def _service_name() -> str:
-    if os.environ.get("PERSONAL_CLI_ENV", "").strip().lower() == "dev":
-        return f"{SERVICE_NAME}-dev"
-    return SERVICE_NAME
-
-
 def _normalize(value: str) -> str:
     return value.strip().strip("\"'").strip()
 
@@ -35,9 +28,7 @@ class CredentialStore:
     """Store the personal-cli server credentials in the OS credential store.
 
     The three values (server_url, api_key, site_url) are serialized as JSON
-    under a single keyring entry so they stay atomic. The service name is
-    suffixed with ``-dev`` when ``PERSONAL_CLI_ENV=dev`` so local testing
-    never touches production credentials.
+    under a single keyring entry so they stay atomic.
     """
 
     def __init__(self, backend: Any | None = None) -> None:
@@ -57,7 +48,7 @@ class CredentialStore:
             {"server_url": server_url, "api_key": api_key, "site_url": site_url}
         )
         try:
-            self._backend.set_password(_service_name(), ACCOUNT_NAME, payload)
+            self._backend.set_password(SERVICE_NAME, ACCOUNT_NAME, payload)
         except Exception as exc:
             raise CredentialError(
                 "Could not access the operating system credential store. "
@@ -66,7 +57,7 @@ class CredentialStore:
 
     def get(self) -> tuple[str, str, str]:
         try:
-            raw = self._backend.get_password(_service_name(), ACCOUNT_NAME)
+            raw = self._backend.get_password(SERVICE_NAME, ACCOUNT_NAME)
         except Exception as exc:
             raise CredentialError(
                 "Could not access the operating system credential store. "
@@ -89,7 +80,7 @@ class CredentialStore:
 
     def remove(self) -> bool:
         try:
-            self._backend.delete_password(_service_name(), ACCOUNT_NAME)
+            self._backend.delete_password(SERVICE_NAME, ACCOUNT_NAME)
         except PasswordDeleteError:
             return False
         except Exception as exc:

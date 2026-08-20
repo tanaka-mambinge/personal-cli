@@ -119,10 +119,6 @@ class ArticleApiClient:
         )
         return dict(result)
 
-    async def revoke_preview(self, slug: str) -> dict[str, Any]:
-        result = await self._request_json("DELETE", f"/api/v1/articles/{slug}/preview")
-        return dict(result)
-
     async def list_tags(self, slug: str) -> dict[str, Any]:
         result = await self._request_json("GET", f"/api/v1/articles/{slug}/tags")
         return dict(result)
@@ -179,6 +175,31 @@ class ArticleApiClient:
     async def delete_page(self, slug: str) -> dict[str, Any]:
         result = await self._request_json("DELETE", f"/api/v1/pages/{slug}")
         return dict(result or {})
+
+    # Services
+    async def create_service(self, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("POST", "/api/v1/services", json=payload)
+        return dict(result)
+
+    async def list_services(self, *, category: str | None = None) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {}
+        if category is not None:
+            params["category"] = category
+        result = await self._request_json("GET", "/api/v1/services", params=params)
+        return list(result or [])
+
+    async def get_service(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("GET", f"/api/v1/services/{slug}")
+        return dict(result)
+
+    async def update_service(self, slug: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request_json("PATCH", f"/api/v1/services/{slug}", json=payload)
+        return dict(result)
+
+    async def delete_service(self, slug: str) -> dict[str, Any]:
+        result = await self._request_json("DELETE", f"/api/v1/services/{slug}")
+        return dict(result or {})
+
 
 
 def get_config() -> tuple[str, str, str]:

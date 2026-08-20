@@ -167,14 +167,15 @@ def test_category_lifecycle(monkeypatch, runner):
     assert body["slug"] == "ideas"
     assert body["name"] == "Ideas"
     assert body["icon"] == "bulb"
+    assert body["dashboard_url"] == "http://testsite/d?category=ideas"
 
     listing = runner.invoke(app, ["category", "list", "--json"])
     assert listing.exit_code == 0
-    assert json.loads(listing.stdout)[0]["slug"] == "ideas"
+    assert json.loads(listing.stdout)[0]["dashboard_url"] == "http://testsite/d?category=ideas"
 
     show = runner.invoke(app, ["category", "show", "ideas", "--json"])
     assert show.exit_code == 0
-    assert json.loads(show.stdout)["name"] == "Ideas"
+    assert json.loads(show.stdout)["dashboard_url"] == "http://testsite/d?category=ideas"
 
     update = runner.invoke(
         app,
@@ -184,6 +185,7 @@ def test_category_lifecycle(monkeypatch, runner):
     updated = json.loads(update.stdout)
     assert updated["name"] == "Idea Box"
     assert updated["icon"] == "lightbulb"
+    assert updated["dashboard_url"] == "http://testsite/d?category=ideas"
 
 
 def test_page_lifecycle(monkeypatch, runner):
@@ -207,26 +209,27 @@ def test_page_lifecycle(monkeypatch, runner):
     page = json.loads(create.stdout)
     assert page["slug"] == "an-idea"
     assert page["category_slug"] == "ideas"
+    assert page["dashboard_url"] == "http://testsite/d/an-idea"
 
     listing = runner.invoke(app, ["page", "list", "--json"])
     assert listing.exit_code == 0
-    assert json.loads(listing.stdout)[0]["slug"] == "an-idea"
+    assert json.loads(listing.stdout)[0]["dashboard_url"] == "http://testsite/d/an-idea"
 
     filtered = runner.invoke(
         app, ["page", "list", "--category", "ideas", "--json"],
     )
     assert filtered.exit_code == 0
-    assert json.loads(filtered.stdout)[0]["slug"] == "an-idea"
+    assert json.loads(filtered.stdout)[0]["dashboard_url"] == "http://testsite/d/an-idea"
 
     show = runner.invoke(app, ["page", "show", "an-idea", "--json"])
     assert show.exit_code == 0
-    assert json.loads(show.stdout)["title"] == "An idea"
+    assert json.loads(show.stdout)["dashboard_url"] == "http://testsite/d/an-idea"
 
     update = runner.invoke(
         app, ["page", "update", "an-idea", "--description", "Refined", "--json"],
     )
     assert update.exit_code == 0
-    assert json.loads(update.stdout)["description"] == "Refined"
+    assert json.loads(update.stdout)["dashboard_url"] == "http://testsite/d/an-idea"
 
     delete = runner.invoke(app, ["page", "delete", "an-idea", "--json"])
     assert delete.exit_code == 0

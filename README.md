@@ -27,23 +27,16 @@ uv sync --extra dev
 
 ## Configure
 
-The CLI requires the API URL and API key. The site URL is required for preview links.
+The CLI stores the server URL, API key, and site URL in its configured keyring
+backend. On first use it prints a local setup URL; open it in a browser, enter
+the three values, and submit. The values are validated against the server
+before they are saved.
+
+For local development, run the CLI through `scripts/docker-cli`. Docker uses a
+persistent container-only credential volume and never mounts the host keyring:
 
 ```bash
-export PERSONAL_SERVER_URL="https://api.example.com"
-export PERSONAL_API_KEY="your-api-key"
-export PERSONAL_SITE_URL="https://example.com"
-```
-
-For local development, put the same variables in a `.env` file in the current directory. Do not commit that file.
-
-Production installations use the same environment variables. For example:
-
-```bash
-PERSONAL_SERVER_URL="https://api.example.com" \
-PERSONAL_API_KEY="your-production-api-key" \
-PERSONAL_SITE_URL="https://example.com" \
-blog-cli article list --type blog
+./scripts/docker-cli run article list --type blog
 ```
 
 All commands support `--json` for machine-readable output and `--server-url` to override the configured API URL for one command. Commands also support `--insecure` to skip TLS certificate verification when needed for local development.
@@ -130,12 +123,6 @@ Override the configured site URL for a preview:
 
 ```bash
 blog-cli article preview my-post --site-url https://preview.example.com
-```
-
-Revoke an existing preview link:
-
-```bash
-blog-cli article revoke-preview my-post
 ```
 
 Publish an article explicitly:
@@ -269,10 +256,11 @@ Use the version from `pyproject.toml` when creating the tag.
 ## Testing
 
 ```bash
-uv run pytest -v
+./scripts/docker-cli test
 ```
 
-The CLI tests use an in-memory fake API client, so they run without MongoDB or the personal server. The CLI architecture is:
+The CLI tests use an in-memory fake API client, run with networking disabled,
+and reuse Docker's cached dependencies. The CLI architecture is:
 
 ```text
 blog-cli (httpx) → FastAPI server → MongoDB/GridFS

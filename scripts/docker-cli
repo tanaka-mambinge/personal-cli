@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+image_name=personal-cli-local
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 test [pytest arguments...] | $0 run [blog-cli arguments...]" >&2
+  exit 2
+fi
+
+mode=$1
+shift
+case "$mode" in
+  test)
+    network=none
+    ;;
+  run)
+    network=host
+    ;;
+  *)
+    echo "Unknown mode: $mode" >&2
+    echo "Usage: $0 test [pytest arguments...] | $0 run [blog-cli arguments...]" >&2
+    exit 2
+    ;;
+esac
+
+docker build \
+  --tag "$image_name" \
+  --file "$project_dir/Dockerfile" \
+  "$project_dir"
+
+docker run \
+  --rm \
+  --init \
+  --interactive \
+  --network "$network" \
+  --volume "$project_dir:/workspace:ro" \
+  --volume "$project_dir/src:/opt/personal-cli/src:ro" \
+  --volume personal-cli-credentials:/var/lib/personal-cli \
+  --workdir /workspace \
+  "$image_name" "$mode" "$@"

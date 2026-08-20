@@ -24,6 +24,7 @@ media_app = typer.Typer(help="Manage media uploads.")
 keys_app = typer.Typer(help="Manage stored credentials.")
 category_app = typer.Typer(help="Manage content categories.")
 page_app = typer.Typer(help="Manage private content pages.")
+service_app = typer.Typer(help="Manage public services.")
 
 app.add_typer(article_app, name="article")
 article_app.add_typer(blog_app, name="blog")
@@ -32,6 +33,7 @@ app.add_typer(media_app, name="media")
 app.add_typer(keys_app, name="keys")
 app.add_typer(category_app, name="category")
 app.add_typer(page_app, name="page")
+app.add_typer(service_app, name="service")
 
 Result = TypeVar("Result")
 
@@ -72,6 +74,67 @@ def _category_dashboard_url(slug: str) -> str:
     return f"{_site_url()}/d?category={slug}"
 
 
+def _article_url(article: dict) -> str:
+    prefix = "/work" if article.get("type") == "project" else "/writing"
+    return f"{_site_url()}{prefix}/{article['slug']}"
+
+
+def _with_article_url(article: dict) -> dict:
+    article["url"] = _article_url(article)
+    return article
+
+
+def _service_url(service: dict) -> str:
+    return f"{_site_url()}/services/{service['slug']}"
+
+
+def _with_service_url(service: dict) -> dict:
+    service["url"] = _service_url(service)
+    return service
+
+
+def _parse_examples(values: list[str]) -> list[dict[str, str]]:
+    examples: list[dict[str, str]] = []
+    for value in values:
+        title, separator, href = value.partition("|")
+        if not separator or not title.strip() or not href.strip():
+            raise CLIError("Examples must use the format: Title|https://example.com")
+        examples.append({"title": title.strip(), "href": href.strip()})
+    return examples
+
+
+def _parse_offerings(values: list[str]) -> list[dict[str, str | None]]:
+    offerings: list[dict[str, str | None]] = []
+    for value in values:
+        parts = [part.strip() for part in value.split("|", 2)]
+        if len(parts) < 2 or not parts[0] or not parts[1]:
+            raise CLIError("Offerings must use the format: Title|Explanation[|MediaNameOrImageURL]")
+        offerings.append({
+            "title": parts[0],
+            "summary": parts[1],
+            "cover_image": parts[2] if len(parts) == 3 and parts[2] else None,
+            "image_alt": None,
+        })
+    return offerings
+
+
+def _preview_if_draft(
+    client: ArticleApiClient,
+    article: dict,
+    *,
+    ttl_hours: int = 24,
+) -> dict:
+    if article.get("status") == "draft":
+        preview = run(client.generate_preview(article["slug"], ttl_hours=ttl_hours, base_url=_site_url()))
+        article["url"] = preview["url"]
+        article["preview_url"] = preview["url"]
+        article["preview_token"] = preview["token"]
+        article["preview_expires_at"] = preview["expires_at"]
+    else:
+        _with_article_url(article)
+    return article
+
+
 def run(coro):
     return asyncio.run(coro)
 
@@ -109,6 +172,8 @@ def article_list(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         articles = run(client.list_articles(status=status, type_filter=type_filter))
+        for article in articles:
+            _with_article_url(article)
         emit_result(articles, json_output=json_output)
 
     try:
@@ -128,6 +193,7 @@ def article_show(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.get_article(slug))
+        _with_article_url(article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -166,6 +232,7 @@ def blog_create(
             "markdown": body,
         }
         article = run(client.create_article(payload))
+        _preview_if_draft(client, article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -207,6 +274,7 @@ def project_create(
             "markdown": body,
         }
         article = run(client.create_article(payload))
+        _preview_if_draft(client, article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -270,6 +338,7 @@ def article_update(
         if markdown is not None or markdown_file is not None:
             payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         article = run(client.update_article(slug, payload))
+        _preview_if_draft(client, article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -290,6 +359,7 @@ def article_publish(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.publish_article(slug, {"published_by": published_by} if published_by else None))
+        _with_article_url(article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -328,6 +398,7 @@ def article_unarchive(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         article = run(client.unarchive_article(slug))
+        _preview_if_draft(client, article)
         emit_result(article, json_output=json_output)
 
     try:
@@ -351,25 +422,6 @@ def article_preview(
         resolved_site_url = site_url or default_site_url
         client = build_client(server_url, insecure=insecure)
         result = run(client.generate_preview(slug, ttl_hours=ttl_hours, base_url=resolved_site_url))
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@article_app.command("revoke-preview")
-def article_revoke_preview(
-    slug: str,
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.revoke_preview(slug))
         emit_result(result, json_output=json_output)
 
     try:
@@ -580,6 +632,8 @@ def category_list(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.list_categories())
+        for category in result:
+            category["dashboard_url"] = _category_dashboard_url(category["slug"])
         emit_result(result, json_output=json_output)
 
     try:
@@ -634,6 +688,7 @@ def category_update(
         if not payload:
             raise CLIError("No update fields provided.")
         result = run(client.update_category(slug, payload))
+        result["dashboard_url"] = _category_dashboard_url(result["slug"])
         emit_result(result, json_output=json_output)
 
     try:
@@ -712,6 +767,8 @@ def page_list(
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
         result = run(client.list_pages(category=category))
+        for page in result:
+            page["dashboard_url"] = _dashboard_url(page["slug"])
         emit_result(result, json_output=json_output)
 
     try:
@@ -791,6 +848,208 @@ def page_delete(
         client = build_client(server_url, insecure=insecure)
         result = run(client.delete_page(slug))
         emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+
+
+@service_app.command("create")
+def service_create(
+    title: str = typer.Option(..., "--title", help="Service title."),
+    summary: str = typer.Option(..., "--summary", help="Short service summary."),
+    category: str = typer.Option(..., "--category", help="Service category, such as web, ai, or automation."),
+    slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
+    service_type: list[str] = typer.Option([], "--type", help="A short requestable service label. Repeat as needed."),
+    offering: list[str] = typer.Option([], "--offering", help="Offering as Title|Explanation[|MediaNameOrImageURL]. Repeat as needed."),
+    example: list[str] = typer.Option([], "--example", help="Example as Title|https://example.com. Repeat as needed."),
+    cover_image: str | None = typer.Option(None, "--cover-image", help="Media name or public image path."),
+    image_alt: str | None = typer.Option(None, "--image-alt", help="Accessible image description."),
+    featured: bool = typer.Option(False, "--featured/--not-featured", help="Show in the homepage services preview."),
+    sort_order: int = typer.Option(0, "--sort-order", help="Lower sorts first."),
+    next_step: str | None = typer.Option(None, "--next-step", help="Optional homepage call-to-action label."),
+    home_title: str | None = typer.Option(None, "--home-title", help="Optional homepage card title."),
+    home_summary: str | None = typer.Option(None, "--home-summary", help="Optional homepage card summary."),
+    home_next_step: str | None = typer.Option(None, "--home-next-step", help="Optional homepage card action label."),
+    home_sort_order: int | None = typer.Option(None, "--home-sort-order", help="Homepage card ordering."),
+    markdown: str | None = typer.Option(None, "--markdown", help="Inline Markdown body."),
+    markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    def _op() -> None:
+        body = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
+        client = build_client(server_url, insecure=insecure)
+        payload = {
+            "title": title,
+            "summary": summary,
+            "category": category,
+            "slug": slug,
+            "examples": _parse_examples(example),
+            "cover_image": cover_image,
+            "image_alt": image_alt,
+            "featured": featured,
+            "sort_order": sort_order,
+            "next_step": next_step,
+            "home_title": home_title,
+            "home_summary": home_summary,
+            "home_next_step": home_next_step,
+            "home_sort_order": home_sort_order,
+            "markdown": body,
+        }
+        payload["types"] = service_type
+        payload["offerings"] = _parse_offerings(offering)
+        result = _with_service_url(run(client.create_service(payload)))
+        emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@service_app.command("list")
+def service_list(
+    category: str | None = typer.Option(None, "--category", help="Filter by category."),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    def _op() -> None:
+        client = build_client(server_url, insecure=insecure)
+        result = run(client.list_services(category=category))
+        for service in result:
+            _with_service_url(service)
+        emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@service_app.command("show")
+def service_show(
+    slug: str,
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    def _op() -> None:
+        client = build_client(server_url, insecure=insecure)
+        result = _with_service_url(run(client.get_service(slug)))
+        emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@service_app.command("update")
+def service_update(
+    slug: str,
+    title: str | None = typer.Option(None, "--title", help="New service title."),
+    summary: str | None = typer.Option(None, "--summary", help="New service summary."),
+    category: str | None = typer.Option(None, "--category", help="New category."),
+    service_type: list[str] = typer.Option([], "--type", help="Replace short requestable labels. Repeat as needed."),
+    clear_types: bool = typer.Option(False, "--clear-types", help="Remove all requestable types."),
+    offering: list[str] = typer.Option([], "--offering", help="Replace offerings with Title|Explanation[|MediaNameOrImageURL] entries."),
+    clear_offerings: bool = typer.Option(False, "--clear-offerings", help="Remove all offerings."),
+    example: list[str] = typer.Option([], "--example", help="Replace examples with Title|https://example.com entries."),
+    clear_examples: bool = typer.Option(False, "--clear-examples", help="Remove all example links."),
+    cover_image: str | None = typer.Option(None, "--cover-image", help="New media name or public image path."),
+    clear_cover_image: bool = typer.Option(False, "--clear-cover-image", help="Remove the cover image."),
+    image_alt: str | None = typer.Option(None, "--image-alt", help="New accessible image description."),
+    featured: bool | None = typer.Option(None, "--featured/--not-featured", help="Set homepage featured state."),
+    sort_order: int | None = typer.Option(None, "--sort-order", help="Lower sorts first."),
+    next_step: str | None = typer.Option(None, "--next-step", help="New homepage call-to-action label."),
+    home_title: str | None = typer.Option(None, "--home-title", help="Homepage card title."),
+    home_summary: str | None = typer.Option(None, "--home-summary", help="Homepage card summary."),
+    home_next_step: str | None = typer.Option(None, "--home-next-step", help="Homepage card action label."),
+    home_sort_order: int | None = typer.Option(None, "--home-sort-order", help="Homepage card ordering."),
+    markdown: str | None = typer.Option(None, "--markdown", help="Inline Markdown body."),
+    markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    def _op() -> None:
+        payload: dict[str, object] = {}
+        if title is not None:
+            payload["title"] = title
+        if summary is not None:
+            payload["summary"] = summary
+        if category is not None:
+            payload["category"] = category
+        if service_type:
+            payload["types"] = service_type
+        elif clear_types:
+            payload["types"] = []
+        if offering:
+            payload["offerings"] = _parse_offerings(offering)
+        elif clear_offerings:
+            payload["offerings"] = []
+        if example:
+            payload["examples"] = _parse_examples(example)
+        elif clear_examples:
+            payload["examples"] = []
+        if cover_image is not None:
+            payload["cover_image"] = cover_image
+        elif clear_cover_image:
+            payload["cover_image"] = None
+        if image_alt is not None:
+            payload["image_alt"] = image_alt
+        if featured is not None:
+            payload["featured"] = featured
+        if sort_order is not None:
+            payload["sort_order"] = sort_order
+        if next_step is not None:
+            payload["next_step"] = next_step
+        if home_title is not None:
+            payload["home_title"] = home_title
+        if home_summary is not None:
+            payload["home_summary"] = home_summary
+        if home_next_step is not None:
+            payload["home_next_step"] = home_next_step
+        if home_sort_order is not None:
+            payload["home_sort_order"] = home_sort_order
+        if markdown is not None or markdown_file is not None:
+            payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
+        if not payload:
+            raise CLIError("No update fields provided.")
+        client = build_client(server_url, insecure=insecure)
+        result = _with_service_url(run(client.update_service(slug, payload)))
+        emit_result(result, json_output=json_output)
+
+    try:
+        _run(_op)
+    except CLIError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@service_app.command("delete")
+def service_delete(
+    slug: str,
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
+    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
+) -> None:
+    def _op() -> None:
+        client = build_client(server_url, insecure=insecure)
+        emit_result(run(client.delete_service(slug)), json_output=json_output)
 
     try:
         _run(_op)
