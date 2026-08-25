@@ -58,6 +58,35 @@ Check what is stored (API key is masked) with:
 ./scripts/docker-cli run keys show
 ```
 
+## Release workflow
+
+The publish pipeline is tag-triggered. Do not use a manual workflow-dispatch
+command.
+
+1. Bump the package version in both `pyproject.toml` and `uv.lock`.
+2. Commit the release:
+
+   ```bash
+   git add pyproject.toml uv.lock
+   git commit -m "Release blog-cli 0.4.2"
+   ```
+
+3. Create an annotated tag matching that version:
+
+   ```bash
+   git tag -a v0.4.2 -m "Release blog-cli 0.4.2"
+   ```
+
+4. Push the branch and tag through the HTTPS `origin` remote:
+
+   ```bash
+   git push origin main
+   git push origin v0.4.2
+   ```
+
+Pushing the `v*.*.*` tag triggers `.github/workflows/publish.yml`, which runs
+the tests, builds the distributions, and publishes `blog-cli` to PyPI.
+
 ## Important
 
 Always use `./scripts/docker-cli test` for tests and
