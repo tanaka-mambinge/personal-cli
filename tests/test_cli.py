@@ -345,7 +345,7 @@ def test_service_cli_lifecycle(monkeypatch, runner: CliRunner, client: FakeApiCl
     assert create_result.exit_code == 0
     created = json.loads(create_result.stdout)
     assert created["slug"] == "web"
-    assert created["url"] == "http://testsite/services/web"
+    assert created["url"] == "http://testsite/services?service=web"
     assert created["types"] == ["Static websites", "Web apps with a database"]
     assert created["offerings"][0]["title"] == "Static websites"
 
@@ -355,7 +355,7 @@ def test_service_cli_lifecycle(monkeypatch, runner: CliRunner, client: FakeApiCl
 
     list_result = runner.invoke(app, ["service", "list", "--category", "Web", "--json"])
     assert list_result.exit_code == 0
-    assert json.loads(list_result.stdout)[0]["url"] == "http://testsite/services/web"
+    assert json.loads(list_result.stdout)[0]["url"] == "http://testsite/services?service=web"
 
 
 def test_service_cli_does_not_expose_homepage_options(runner: CliRunner) -> None:

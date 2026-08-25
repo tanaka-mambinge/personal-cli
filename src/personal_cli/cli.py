@@ -73,7 +73,7 @@ def _with_article_url(article: dict) -> dict:
 
 
 def _service_url(service: dict) -> str:
-    return f"{_site_url()}/services/{service['slug']}"
+    return f"{_site_url()}/services?service={service['slug']}"
 
 
 def _with_service_url(service: dict) -> dict:

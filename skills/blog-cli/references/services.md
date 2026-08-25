@@ -1,6 +1,6 @@
 # Services reference
 
-Services are public offerings on the personal site. They live under `/services/<slug>` immediately after creation.
+Services are public offerings on the personal site. They are shown in a modal from `/services?service=<slug>` immediately after creation.
 
 ## Commands
 
@@ -35,7 +35,7 @@ blog-cli service delete static-websites
 - Offering values use `Title|Explanation[|MediaNameOrImageURL]`. The explanation and image are stored with the service record and rendered dynamically.
 - `--type` remains available for short labels while existing records are being expanded into structured offerings.
 - `--sort-order` controls ordering in the dynamic `/services` listing.
-- `--next-step` controls the call-to-action on the dynamic service detail page.
+- `--next-step` controls the call-to-action in the service detail modal.
 - Example values use `Title|URL` and can be repeated. Use `--clear-examples` to remove them.
 - Always share the returned public URL after a successful operation.
 - Plain Markdown for service details; do not add pricing unless requested.
