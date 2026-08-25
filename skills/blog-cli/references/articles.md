@@ -36,6 +36,66 @@ blog-cli article delete my-post
 blog-cli article unarchive my-post
 ```
 
+## Additional commands
+
+```bash
+# List all content or filter by type/status
+blog-cli article list
+blog-cli article list --type blog --status published
+
+# Generate a preview link for a draft
+blog-cli article preview my-post --ttl-hours 4
+
+# Add or remove tags where supported
+blog-cli article tags my-post
+blog-cli article tag-add my-post --tag example
+blog-cli article tag-remove my-post --tag example
+```
+
+## Response shapes
+
+### Full article
+
+```json
+{
+  "id": "slug", "slug": "slug", "title": "Title",
+  "description": "One line", "markdown": "# Body\n",
+  "tags": ["tag"], "type": "blog", "status": "draft",
+  "created_at": "2026-07-08T00:00:00Z",
+  "updated_at": "2026-07-08T00:00:00Z",
+  "published_at": null, "published_by": null,
+  "preview_expires_at": null
+}
+```
+
+### Article list item
+
+```json
+{
+  "id": "slug", "slug": "slug", "title": "Title",
+  "description": "One line", "type": "blog", "status": "draft",
+  "updated_at": "2026-07-08T00:00:00Z", "published_at": null
+}
+```
+
+### Preview response
+
+```json
+{
+  "url": "<site-url>/writing/my-post?preview=abc123",
+  "token": "abc123", "slug": "my-post",
+  "expires_at": "2026-07-09T00:00:00Z"
+}
+```
+
+## Slug rules
+
+- The server slugifies the title or explicit slug input.
+- Duplicate slugs receive `-2`, `-3` suffixes.
+- Slugs are immutable after creation.
+- Soft-deleted slugs remain reserved.
+- Archived articles restore with their prior status.
+
 ## Rules
 
 - Create as a **draft** unless the user explicitly says to publish.

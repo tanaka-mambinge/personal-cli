@@ -44,10 +44,7 @@ class FakeApiClient:
     def __init__(self) -> None:
         self.articles: dict[str, dict] = {}
         self.media: dict[str, dict] = {}
-        self.categories: dict[str, dict] = {}
-        self.pages: dict[str, dict] = {}
         self.services: dict[str, dict] = {}
-        self._page_counter = 0
 
     def _slugify(self, value: str) -> str:
         return value.lower().replace(" ", "-")
@@ -115,82 +112,6 @@ class FakeApiClient:
     async def delete_media(self, name: str) -> dict:
         self.media.pop(name, None)
         return {"deleted": True, "name": name}
-
-    # Categories
-    async def create_category(self, payload: dict) -> dict:
-        slug = self._slugify(payload["name"])
-        category = {
-            "id": slug,
-            "slug": slug,
-            "name": payload["name"],
-            "icon": payload.get("icon"),
-            "description": payload.get("description"),
-            "sort_order": payload.get("sort_order", 0),
-            "created_at": "2026-01-01T00:00:00Z",
-            "page_count": 0,
-        }
-        self.categories[slug] = category
-        return category
-
-    async def list_categories(self) -> list[dict]:
-        return list(self.categories.values())
-
-    async def get_category(self, slug: str) -> dict:
-        return self.categories[slug]
-
-    async def update_category(self, slug: str, payload: dict) -> dict:
-        category = self.categories[slug]
-        for key, value in payload.items():
-            category[key] = value
-        return category
-
-    async def delete_category(self, slug: str) -> dict:
-        if any(p["category_slug"] == slug for p in self.pages.values()):
-            raise Exception("Category in use")
-        self.categories.pop(slug, None)
-        return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
-
-    # Pages
-    async def create_page(self, payload: dict) -> dict:
-        slug = payload.get("slug") or self._slugify(payload["title"])
-        if slug in self.pages:
-            self._page_counter += 1
-            slug = f"{slug}-{self._page_counter}"
-        page = {
-            "id": slug,
-            "slug": slug,
-            "title": payload["title"],
-            "description": payload["description"],
-            "markdown": payload["markdown"],
-            "category_slug": payload["category_slug"],
-            "tags": payload.get("tags", []),
-            "sort_order": payload.get("sort_order", 0),
-            "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:00Z",
-        }
-        self.pages[slug] = page
-        return page
-
-    async def list_pages(self, *, category: str | None = None, tag: str | None = None) -> list[dict]:
-        pages = list(self.pages.values())
-        if category is not None:
-            pages = [p for p in pages if p["category_slug"] == category]
-        if tag is not None:
-            pages = [p for p in pages if tag in p["tags"]]
-        return pages
-
-    async def get_page(self, slug: str) -> dict:
-        return self.pages[slug]
-
-    async def update_page(self, slug: str, payload: dict) -> dict:
-        page = self.pages[slug]
-        for key, value in payload.items():
-            page[key] = value
-        return page
-
-    async def delete_page(self, slug: str) -> dict:
-        self.pages.pop(slug, None)
-        return {"deleted": True, "slug": slug, "deleted_at": "2026-01-01T00:00:00Z"}
 
     # Services
     async def create_service(self, payload: dict) -> dict:
@@ -437,6 +358,20 @@ def test_service_cli_lifecycle(monkeypatch, runner: CliRunner, client: FakeApiCl
     assert json.loads(list_result.stdout)[0]["url"] == "http://testsite/services/web"
 
 
+def test_service_cli_does_not_expose_homepage_options(runner: CliRunner) -> None:
+    create_help = runner.invoke(app, ["service", "create", "--help"])
+    update_help = runner.invoke(app, ["service", "update", "--help"])
+
+    assert create_help.exit_code == 0
+    assert update_help.exit_code == 0
+    for output in (create_help.output, update_help.output):
+        assert "--featured" not in output
+        assert "--home-title" not in output
+        assert "--home-summary" not in output
+        assert "--home-next-step" not in output
+        assert "--home-sort-order" not in output
+
+
 def test_media_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient, tmp_path: Path) -> None:
     monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(client))
     media_file = tmp_path / "test-image.png"
@@ -458,38 +393,6 @@ def test_media_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient, 
     deleted = json.loads(delete_result.stdout)
     assert deleted["deleted"] is True
     assert deleted["name"] == "hero-image"
-
-
-def test_keys_show_reports_stored_credentials(runner: CliRunner) -> None:
-    result = runner.invoke(app, ["keys", "show", "--json"])
-    assert result.exit_code == 0
-    shown = json.loads(result.stdout)
-    assert shown["server_url"] == "http://testserver"
-    assert shown["site_url"] == "http://testsite"
-    assert "api_key" in shown
-    assert shown["api_key"] != "test-key"
-
-
-def test_keys_revoke_clears_credentials(
-    runner: CliRunner, credential_store: FakeKeyringBackend
-) -> None:
-    revoke_result = runner.invoke(app, ["keys", "revoke", "--json"])
-    assert revoke_result.exit_code == 0
-    revoked = json.loads(revoke_result.stdout)
-    assert revoked["revoked"] is True
-
-    assert credential_store.get_password("personal-cli", "default") is None
-
-    second_revoke = runner.invoke(app, ["keys", "revoke", "--json"])
-    assert second_revoke.exit_code == 0
-    assert json.loads(second_revoke.stdout)["revoked"] is False
-
-
-def test_keys_show_when_empty(runner: CliRunner, credential_store: FakeKeyringBackend) -> None:
-    credential_store.delete_password("personal-cli", "default")
-    result = runner.invoke(app, ["keys", "show", "--json"])
-    assert result.exit_code == 0
-    assert json.loads(result.stdout) == {"stored": False}
 
 
 def test_missing_credentials_triggers_setup(

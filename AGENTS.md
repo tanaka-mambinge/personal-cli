@@ -78,25 +78,14 @@ Rules:
 1. Create content as a draft unless the user explicitly says to publish / go live / ship it.
    - Blog: `./scripts/docker-cli run article blog create --title ... --description ... --markdown ...`
    - Project: `./scripts/docker-cli run article project create --title ... --description ... --markdown ...`
-   - Page (private dashboard): `./scripts/docker-cli run page create --title ... --description ... --category <slug> --markdown ...`
 2. Draft article/project writes automatically return a preview URL. Always share it with the user.
 3. When a preview already exists, keep using its existing URL. Never revoke or regenerate it just because content was updated; updating the article changes the content behind the existing preview URL.
-4. After every successful page, article, project, or category operation, share the URL returned by the CLI without waiting for the user to ask.
+4. After every successful article, project, or service operation, share the URL returned by the CLI without waiting for the user to ask.
 5. Only publish when the user explicitly says to publish.
    - `./scripts/docker-cli run article publish <slug>`
 6. Blogs cannot have tags. If the user asks for tags on a blog, warn them.
 7. Only use `--pinned` / `--sort-order` for projects when the user asks.
-8. Pages are always private (no publish step). Categories must exist before creating a page in them. Create the category first with `./scripts/docker-cli run category create --name <name>`.
-9. After every page operation, share the `dashboard_url` from the CLI output with the user so they can open `/d/<slug>` in the browser. If a browser pane is already open on that tab, tell the user to reload it.
 
 ## ChatGPT / Codex skill
 
-The CLI ships a bundled skill (`content-pipeline`) that routes blog/project/service/page tasks to the right reference. Install it with:
-
-```bash
-./scripts/docker-cli run skill install
-```
-
-This copies `SKILL.md` plus `references/articles.md`, `references/projects.md`, and `references/pages.md` into the configured agent skill directory. Uninstall with `./scripts/docker-cli run skill uninstall`.
-
-This file is the source of truth for the skill. If the user says "update the skill", update this section.
+The repository skill lives at `skills/blog-cli/SKILL.md`. It is loaded by agents from the repository and is not managed through CLI commands. If the user says “update the skill”, update that file.

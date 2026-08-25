@@ -22,8 +22,6 @@ blog_app = typer.Typer(help="Manage blog posts.")
 project_app = typer.Typer(help="Manage projects.")
 media_app = typer.Typer(help="Manage media uploads.")
 keys_app = typer.Typer(help="Manage stored credentials.")
-category_app = typer.Typer(help="Manage content categories.")
-page_app = typer.Typer(help="Manage private content pages.")
 service_app = typer.Typer(help="Manage public services.")
 
 app.add_typer(article_app, name="article")
@@ -31,8 +29,6 @@ article_app.add_typer(blog_app, name="blog")
 article_app.add_typer(project_app, name="project")
 app.add_typer(media_app, name="media")
 app.add_typer(keys_app, name="keys")
-app.add_typer(category_app, name="category")
-app.add_typer(page_app, name="page")
 app.add_typer(service_app, name="service")
 
 Result = TypeVar("Result")
@@ -64,14 +60,6 @@ def build_client(
 def _site_url() -> str:
     _, _, site_url = get_config()
     return site_url.rstrip("/")
-
-
-def _dashboard_url(slug: str) -> str:
-    return f"{_site_url()}/d/{slug}"
-
-
-def _category_dashboard_url(slug: str) -> str:
-    return f"{_site_url()}/d?category={slug}"
 
 
 def _article_url(article: dict) -> str:
@@ -591,272 +579,6 @@ def keys_show(
 
 
 # ---------------------------------------------------------------------------
-# Categories
-# ---------------------------------------------------------------------------
-
-
-@category_app.command("create")
-def category_create(
-    name: str = typer.Option(..., "--name", help="Display name. Slug is derived from this."),
-    icon: str | None = typer.Option(None, "--icon", help="Tabler icon name, e.g. bulb."),
-    description: str | None = typer.Option(None, "--description", help="Short description."),
-    sort_order: int = typer.Option(0, "--sort-order", help="Lower sorts first."),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        payload: dict[str, object] = {"name": name, "sort_order": sort_order}
-        if icon is not None:
-            payload["icon"] = icon
-        if description is not None:
-            payload["description"] = description
-        result = run(client.create_category(payload))
-        result["dashboard_url"] = _category_dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@category_app.command("list")
-def category_list(
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.list_categories())
-        for category in result:
-            category["dashboard_url"] = _category_dashboard_url(category["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@category_app.command("show")
-def category_show(
-    slug: str,
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.get_category(slug))
-        result["dashboard_url"] = _category_dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@category_app.command("update")
-def category_update(
-    slug: str,
-    name: str | None = typer.Option(None, "--name", help="New display name."),
-    icon: str | None = typer.Option(None, "--icon", help="New tabler icon name."),
-    description: str | None = typer.Option(None, "--description", help="New description."),
-    sort_order: int | None = typer.Option(None, "--sort-order", help="Lower sorts first."),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        payload: dict[str, object] = {}
-        if name is not None:
-            payload["name"] = name
-        if icon is not None:
-            payload["icon"] = icon
-        if description is not None:
-            payload["description"] = description
-        if sort_order is not None:
-            payload["sort_order"] = sort_order
-        if not payload:
-            raise CLIError("No update fields provided.")
-        result = run(client.update_category(slug, payload))
-        result["dashboard_url"] = _category_dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@category_app.command("delete")
-def category_delete(
-    slug: str,
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.delete_category(slug))
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-# ---------------------------------------------------------------------------
-# Pages
-# ---------------------------------------------------------------------------
-
-
-@page_app.command("create")
-def page_create(
-    title: str = typer.Option(..., "--title", help="Page title."),
-    description: str = typer.Option(..., "--description", help="Short summary."),
-    category: str = typer.Option(..., "--category", help="Category slug the page belongs to."),
-    slug: str | None = typer.Option(None, "--slug", help="Optional slug override."),
-    sort_order: int = typer.Option(0, "--sort-order", help="Lower sorts first."),
-    markdown: str | None = typer.Option(None, "--markdown", help="Inline MDX body."),
-    markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        body = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
-        client = build_client(server_url, insecure=insecure)
-        payload = {
-            "title": title,
-            "description": description,
-            "category_slug": category,
-            "slug": slug,
-            "sort_order": sort_order,
-            "markdown": body,
-        }
-        result = run(client.create_page(payload))
-        result["dashboard_url"] = _dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@page_app.command("list")
-def page_list(
-    category: str | None = typer.Option(None, "--category", help="Filter by category slug."),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.list_pages(category=category))
-        for page in result:
-            page["dashboard_url"] = _dashboard_url(page["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@page_app.command("show")
-def page_show(
-    slug: str,
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.get_page(slug))
-        result["dashboard_url"] = _dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@page_app.command("update")
-def page_update(
-    slug: str,
-    title: str | None = typer.Option(None, "--title", help="New title."),
-    description: str | None = typer.Option(None, "--description", help="New summary."),
-    category: str | None = typer.Option(None, "--category", help="New category slug."),
-    sort_order: int | None = typer.Option(None, "--sort-order", help="Lower sorts first."),
-    markdown: str | None = typer.Option(None, "--markdown", help="Inline MDX body."),
-    markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        payload: dict[str, object] = {}
-        if title is not None:
-            payload["title"] = title
-        if description is not None:
-            payload["description"] = description
-        if category is not None:
-            payload["category_slug"] = category
-        if sort_order is not None:
-            payload["sort_order"] = sort_order
-        if markdown is not None or markdown_file is not None:
-            payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
-        if not payload:
-            raise CLIError("No update fields provided.")
-        result = run(client.update_page(slug, payload))
-        result["dashboard_url"] = _dashboard_url(result["slug"])
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-@page_app.command("delete")
-def page_delete(
-    slug: str,
-    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
-    insecure: bool = typer.Option(False, "--insecure", help="Skip SSL verification."),
-    server_url: str | None = typer.Option(None, "--server-url", help="FastAPI base URL."),
-) -> None:
-    def _op() -> None:
-        client = build_client(server_url, insecure=insecure)
-        result = run(client.delete_page(slug))
-        emit_result(result, json_output=json_output)
-
-    try:
-        _run(_op)
-    except CLIError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1) from exc
-
-
-# ---------------------------------------------------------------------------
 # Services
 # ---------------------------------------------------------------------------
 
@@ -872,13 +594,8 @@ def service_create(
     example: list[str] = typer.Option([], "--example", help="Example as Title|https://example.com. Repeat as needed."),
     cover_image: str | None = typer.Option(None, "--cover-image", help="Media name or public image path."),
     image_alt: str | None = typer.Option(None, "--image-alt", help="Accessible image description."),
-    featured: bool = typer.Option(False, "--featured/--not-featured", help="Show in the homepage services preview."),
     sort_order: int = typer.Option(0, "--sort-order", help="Lower sorts first."),
-    next_step: str | None = typer.Option(None, "--next-step", help="Optional homepage call-to-action label."),
-    home_title: str | None = typer.Option(None, "--home-title", help="Optional homepage card title."),
-    home_summary: str | None = typer.Option(None, "--home-summary", help="Optional homepage card summary."),
-    home_next_step: str | None = typer.Option(None, "--home-next-step", help="Optional homepage card action label."),
-    home_sort_order: int | None = typer.Option(None, "--home-sort-order", help="Homepage card ordering."),
+    next_step: str | None = typer.Option(None, "--next-step", help="Optional service detail call-to-action label."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline Markdown body."),
     markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
     json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -896,13 +613,8 @@ def service_create(
             "examples": _parse_examples(example),
             "cover_image": cover_image,
             "image_alt": image_alt,
-            "featured": featured,
             "sort_order": sort_order,
             "next_step": next_step,
-            "home_title": home_title,
-            "home_summary": home_summary,
-            "home_next_step": home_next_step,
-            "home_sort_order": home_sort_order,
             "markdown": body,
         }
         payload["types"] = service_type
@@ -972,13 +684,8 @@ def service_update(
     cover_image: str | None = typer.Option(None, "--cover-image", help="New media name or public image path."),
     clear_cover_image: bool = typer.Option(False, "--clear-cover-image", help="Remove the cover image."),
     image_alt: str | None = typer.Option(None, "--image-alt", help="New accessible image description."),
-    featured: bool | None = typer.Option(None, "--featured/--not-featured", help="Set homepage featured state."),
     sort_order: int | None = typer.Option(None, "--sort-order", help="Lower sorts first."),
-    next_step: str | None = typer.Option(None, "--next-step", help="New homepage call-to-action label."),
-    home_title: str | None = typer.Option(None, "--home-title", help="Homepage card title."),
-    home_summary: str | None = typer.Option(None, "--home-summary", help="Homepage card summary."),
-    home_next_step: str | None = typer.Option(None, "--home-next-step", help="Homepage card action label."),
-    home_sort_order: int | None = typer.Option(None, "--home-sort-order", help="Homepage card ordering."),
+    next_step: str | None = typer.Option(None, "--next-step", help="New service detail call-to-action label."),
     markdown: str | None = typer.Option(None, "--markdown", help="Inline Markdown body."),
     markdown_file: Path | None = typer.Option(None, "--markdown-file", exists=True, readable=True, dir_okay=False),
     json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -1011,20 +718,10 @@ def service_update(
             payload["cover_image"] = None
         if image_alt is not None:
             payload["image_alt"] = image_alt
-        if featured is not None:
-            payload["featured"] = featured
         if sort_order is not None:
             payload["sort_order"] = sort_order
         if next_step is not None:
             payload["next_step"] = next_step
-        if home_title is not None:
-            payload["home_title"] = home_title
-        if home_summary is not None:
-            payload["home_summary"] = home_summary
-        if home_next_step is not None:
-            payload["home_next_step"] = home_next_step
-        if home_sort_order is not None:
-            payload["home_sort_order"] = home_sort_order
         if markdown is not None or markdown_file is not None:
             payload["markdown"] = read_markdown_from_source(markdown=markdown, markdown_file=markdown_file)
         if not payload:

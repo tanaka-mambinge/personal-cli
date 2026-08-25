@@ -1,0 +1,7 @@
+interface:
+  display_name: "Blog CLI"
+  short_description: "Manage articles, projects, public services, and media."
+  brand_color: "#0F172A"
+
+policy:
+  allow_implicit_invocation: true
