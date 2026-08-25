@@ -34,13 +34,20 @@ URL at `127.0.0.1` opens in the user's browser. Keep the command running until
 the form has been submitted. The setup page remains reloadable while waiting
 for valid credentials.
 
-If a command reports missing credentials, treat that as an interactive setup
-state, not a terminal failure. Immediately relay the exact setup URL printed on
-stderr as a clickable Markdown link and tell the user to enter the server URL,
-API key, and site URL there. Never ask the user to paste credentials into chat,
-start a second setup session, or replace the URL while the current session is
-alive. After the form succeeds, let the original command retry and share its
-result and any returned content link.
+If a content command reports `authentication_required` as JSON, treat it as a
+terminal authentication failure. Do not start setup from that command and do
+not expect a setup URL in its error. Start the explicit setup command in a
+separate attached process:
+
+```bash
+./scripts/docker-cli run keys setup
+```
+
+Relay the exact browser URL printed by the setup process as a clickable link.
+Keep that process running while the user enters the server URL, API key, and
+site URL, including any corrections after validation errors. After the setup
+process exits successfully, rerun the original command. Never ask the user to
+paste credentials into chat or start a second setup process.
 
 Publishing the CLI package through GitHub Actions and PyPI does not read the
 keyring or publish articles; a production automation job that runs `blog-cli`

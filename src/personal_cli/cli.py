@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib.metadata
-import re
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -128,48 +127,43 @@ def run(coro):
     return asyncio.run(coro)
 
 
-_SETUP_URL_RE = re.compile(r"https?://\S+")
-
-
-def _emit_setup_message(message: str, *, json_output: bool) -> None:
-    if not json_output:
-        _emit(message)
-        return
-    match = _SETUP_URL_RE.search(message)
-    emit_error(
-        "authentication_required",
-        "Credentials are required. Complete setup in your browser.",
-        json_output=True,
-        setup_url=match.group(0) if match else None,
-    )
+_SETUP_COMMAND = "blog-cli keys setup"
+_AUTH_MESSAGE = (
+    "Authentication required. Run `blog-cli keys setup` in an attached process. "
+    "Keep it running while the user enters and validates credentials in the browser, "
+    "then rerun the original command."
+)
 
 
 def _run(operation: Callable[[], Result], *, json_output: bool = False) -> Result:
-    """Run an operation, opening the setup page when credentials are missing/rejected."""
-    while True:
-        try:
-            return operation()
-        except MissingCredentialError:
-            run_setup(
-                CredentialStore(),
-                output=lambda message: _emit_setup_message(message, json_output=json_output),
-                prompt="Credentials are missing. Open this link in your browser",
-            )
-        except CredentialError as exc:
-            emit_error(
-                "credential_store_unavailable",
-                str(exc),
-                json_output=json_output,
-            )
-            raise typer.Exit(code=2) from exc
-        except CLIError as exc:
-            if exc.status_code not in (401, 403):
-                raise
-            run_setup(
-                CredentialStore(),
-                output=lambda message: _emit_setup_message(message, json_output=json_output),
-                prompt="Enter replacement credentials in your browser",
-            )
+    """Run an operation and return machine-readable auth failures."""
+    try:
+        return operation()
+    except MissingCredentialError as exc:
+        emit_error(
+            "authentication_required",
+            _AUTH_MESSAGE,
+            json_output=True,
+            setup_command=_SETUP_COMMAND,
+        )
+        raise typer.Exit(code=2) from exc
+    except CredentialError as exc:
+        emit_error(
+            "credential_store_unavailable",
+            str(exc),
+            json_output=True,
+        )
+        raise typer.Exit(code=2) from exc
+    except CLIError as exc:
+        if exc.status_code not in (401, 403):
+            raise
+        emit_error(
+            "authentication_required",
+            "The stored API key was rejected. Run `blog-cli keys setup`, keep it attached until setup succeeds, then rerun the original command.",
+            json_output=True,
+            setup_command=_SETUP_COMMAND,
+        )
+        raise typer.Exit(code=2) from exc
 
 
 @article_app.command("list")
@@ -561,6 +555,26 @@ def media_delete(
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
+
+
+@keys_app.command("setup")
+def keys_setup(
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output after setup succeeds."),
+) -> None:
+    """Start the browser-based credential setup server and wait for valid credentials."""
+    try:
+        run_setup(
+            CredentialStore(),
+            output=_emit,
+            prompt="Open this setup URL in your browser",
+        )
+        emit_result(
+            {"configured": True, "message": "Credentials saved."},
+            json_output=json_output,
+        )
+    except CredentialError as exc:
+        emit_error("credential_store_unavailable", str(exc), json_output=True)
+        raise typer.Exit(code=2) from exc
 
 
 @keys_app.command("revoke")

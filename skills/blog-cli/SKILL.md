@@ -25,36 +25,38 @@ When a command needs credentials, run it normally, for example:
 blog-cli article list --json
 ```
 
-If credentials are missing, the command prints an exact one-time setup URL and
-waits. Immediately relay that URL as a clickable link and tell the user to open
-it in a browser. The user enters the server URL, API key, and site URL in the
-setup form. The form validates the values and saves them to the configured
-credential store; the original command then retries automatically.
-
-Keep the original command attached while the user completes setup. Do not ask
-the user to send the API key in chat, start a second setup command, or invent a
-replacement URL. After setup completes, share the command's result.
-
-When the command uses `--json`, the setup notice is emitted as JSON on stderr:
+If credentials are missing, the command fails immediately with a JSON error on
+stderr. It does not print a setup URL or start a setup server:
 
 ```json
 {
   "error": {
     "code": "authentication_required",
-    "message": "Credentials are required. Complete setup in your browser.",
-    "setup_url": "http://127.0.0.1:3234/setup?token=..."
+    "message": "Authentication required. Run `blog-cli keys setup` in an attached process. Keep it running while the user enters and validates credentials in the browser, then rerun the original command.",
+    "setup_command": "blog-cli keys setup"
   }
 }
 ```
 
-Parse `setup_url` from that error and relay it as a clickable link. If the
-credential store itself is unavailable, the CLI emits an error with code
+Start the setup server with the command from the error:
+
+```bash
+blog-cli keys setup
+```
+
+Keep that command attached until it exits. Relay the exact setup URL it prints
+as a clickable link. The user enters the server URL, API key, and site URL in
+the browser form. The server stays running while invalid values are corrected,
+and exits only after valid credentials are saved. Then rerun the original
+command. Never ask the user to send the API key in chat or start a second setup
+server.
+
+If the credential store itself is unavailable, the CLI emits an error with code
 `credential_store_unavailable`; report that environment problem instead of
 asking for the API key in chat.
 
-If the server rejects an existing key with `401` or `403`, tell the user the
-stored key was rejected, keep the command attached, and relay the replacement
-credential setup URL. Follow the same browser-only flow.
+If the server rejects an existing key with `401` or `403`, the command fails
+with `authentication_required` and the same `blog-cli keys setup` instruction.
 
 ## Content routing
 

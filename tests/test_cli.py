@@ -395,13 +395,33 @@ def test_media_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient, 
     assert deleted["name"] == "hero-image"
 
 
-def test_missing_credentials_triggers_setup(
+def test_authentication_required_is_structured_and_does_not_start_setup(
     monkeypatch: pytest.MonkeyPatch,
     runner: CliRunner,
     credential_store: FakeKeyringBackend,
 ) -> None:
     credential_store.delete_password("personal-cli", "default")
 
+    setup_calls: list[int] = []
+    monkeypatch.setattr("personal_cli.cli.run_setup", lambda *args, **kwargs: setup_calls.append(1))
+    monkeypatch.setattr("personal_cli.cli.build_client", lambda *args, **kwargs: (_ for _ in ()).throw(MissingCredentialError("missing")))
+
+    for args in (["article", "list"], ["article", "list", "--json"]):
+        result = runner.invoke(app, args)
+        assert result.exit_code == 2
+        error = json.loads(result.stderr.strip())
+        assert error["error"]["code"] == "authentication_required"
+        assert error["error"]["setup_command"] == "blog-cli keys setup"
+        assert "http" not in result.stderr
+
+    assert not setup_calls
+
+
+def test_keys_setup_runs_attached_setup_server(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: CliRunner,
+    credential_store: FakeKeyringBackend,
+) -> None:
     setup_calls: list[int] = []
 
     def _fake_run_setup(store, output=None, prompt=""):
@@ -415,23 +435,12 @@ def test_missing_credentials_triggers_setup(
 
     monkeypatch.setattr("personal_cli.cli.run_setup", _fake_run_setup)
 
-    attempts: list[int] = []
+    result = runner.invoke(app, ["keys", "setup", "--json"])
 
-    def _flaky_build_client(server_url=None, insecure=False):
-        attempts.append(1)
-        if len(attempts) == 1:
-            raise MissingCredentialError("missing")
-        return FakeApiClient()
-
-    monkeypatch.setattr("personal_cli.cli.build_client", _flaky_build_client)
-    monkeypatch.setattr("personal_cli.cli.run", lambda coro: __import__("asyncio").run(coro))
-
-    result = runner.invoke(app, ["article", "list", "--json"])
-    assert setup_calls, "run_setup should have been called"
     assert result.exit_code == 0
-    setup_error = json.loads(result.stderr.strip())
-    assert setup_error["error"]["code"] == "authentication_required"
-    assert setup_error["error"]["setup_url"].startswith("http://127.0.0.1:3233/setup")
+    assert setup_calls == [1]
+    assert "http://127.0.0.1:3233/setup?token=fake" in result.stderr
+    assert json.loads(result.stdout)["configured"] is True
 
 
 def test_json_credential_store_error_is_structured(
