@@ -60,5 +60,6 @@ If a request spans multiple content types, load each matching reference.
 - Create articles and projects as drafts unless the user explicitly asks to publish.
 - Services are public immediately when created.
 - Keep existing preview links stable when content is updated.
+- When replacing media already referenced by live content, use a new cache-busting media name (for example, `service-ai-cover-17483874`), update every reference to the new name, verify the live result, and only then soft-delete the old asset. Do not replace a live asset in place with the old name.
 - Share the returned public or preview URL after a successful operation.
 - Use plain, readable typography and ordinary Markdown without emoji, arrows, or dingbats unless explicitly requested.
