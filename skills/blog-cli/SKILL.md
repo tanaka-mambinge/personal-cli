@@ -16,10 +16,28 @@ pip install -U blog-cli
 
 ## Credentials
 
-Credentials are stored in the configured keyring backend. On first run, or
-when credentials are missing, the CLI prints a setup URL to stderr. Open it,
-enter the server URL, API key, and site URL, and submit. They are validated
-against the server before saving. Never paste credentials into chat.
+Credentials are stored in the configured keyring backend. There is no API-key
+argument and credentials must never be pasted into chat.
+
+When a command needs credentials, run it normally, for example:
+
+```bash
+blog-cli article list --json
+```
+
+If credentials are missing, the command prints an exact one-time setup URL and
+waits. Immediately relay that URL as a clickable link and tell the user to open
+it in a browser. The user enters the server URL, API key, and site URL in the
+setup form. The form validates the values and saves them to the configured
+credential store; the original command then retries automatically.
+
+Keep the original command attached while the user completes setup. Do not ask
+the user to send the API key in chat, start a second setup command, or invent a
+replacement URL. After setup completes, share the command's result.
+
+If the server rejects an existing key with `401` or `403`, tell the user the
+stored key was rejected, keep the command attached, and relay the replacement
+credential setup URL. Follow the same browser-only flow.
 
 ## Content routing
 
