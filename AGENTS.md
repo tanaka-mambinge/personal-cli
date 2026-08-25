@@ -93,7 +93,17 @@ Always use `./scripts/docker-cli test` for tests and
 `./scripts/docker-cli run ...` for local CLI commands. Never run the checkout
 with a host-level CLI binary.
 
-## Content workflow skill (the skill lives here)
+## User-facing skill boundary
+
+The user-facing skill is `skills/blog-cli/SKILL.md`. Keep that file focused on
+using the installed `blog-cli`: installation, credentials, content routing,
+commands, and content workflow.
+
+Never put Docker instructions, `scripts/docker-cli`, test commands, repository
+setup, release procedures, or other maintainer-only details in the skill. Keep
+those instructions in this `AGENTS.md` file instead.
+
+## Content workflow skill
 
 Whenever creating, editing, or updating articles/projects for the personal site, default to **draft first**. Keep any existing preview link stable unless the user explicitly asks for a new one.
 
