@@ -35,6 +35,23 @@ Keep the original command attached while the user completes setup. Do not ask
 the user to send the API key in chat, start a second setup command, or invent a
 replacement URL. After setup completes, share the command's result.
 
+When the command uses `--json`, the setup notice is emitted as JSON on stderr:
+
+```json
+{
+  "error": {
+    "code": "authentication_required",
+    "message": "Credentials are required. Complete setup in your browser.",
+    "setup_url": "http://127.0.0.1:3234/setup?token=..."
+  }
+}
+```
+
+Parse `setup_url` from that error and relay it as a clickable link. If the
+credential store itself is unavailable, the CLI emits an error with code
+`credential_store_unavailable`; report that environment problem instead of
+asking for the API key in chat.
+
 If the server rejects an existing key with `401` or `403`, tell the user the
 stored key was rejected, keep the command attached, and relay the replacement
 credential setup URL. Follow the same browser-only flow.

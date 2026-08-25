@@ -429,3 +429,28 @@ def test_missing_credentials_triggers_setup(
     result = runner.invoke(app, ["article", "list", "--json"])
     assert setup_calls, "run_setup should have been called"
     assert result.exit_code == 0
+    setup_error = json.loads(result.stderr.strip())
+    assert setup_error["error"]["code"] == "authentication_required"
+    assert setup_error["error"]["setup_url"].startswith("http://127.0.0.1:3233/setup")
+
+
+def test_json_credential_store_error_is_structured(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: CliRunner,
+) -> None:
+    def _credential_store_failure(server_url=None, insecure=False):
+        raise CredentialError("Could not access the operating system credential store.")
+
+    monkeypatch.setattr("personal_cli.cli.build_client", _credential_store_failure)
+
+    result = runner.invoke(app, ["article", "list", "--json"])
+
+    assert result.exit_code == 2
+    error = json.loads(result.stderr.strip())
+    assert error == {
+        "error": {
+            "code": "credential_store_unavailable",
+            "message": "Could not access the operating system credential store.",
+        }
+    }
+    assert "Traceback" not in result.output

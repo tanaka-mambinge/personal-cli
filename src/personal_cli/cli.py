@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.metadata
+import re
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -13,7 +14,7 @@ from personal_cli.credentials import (
     CredentialStore,
     MissingCredentialError,
 )
-from personal_cli.formatting import emit_result, read_markdown_from_source
+from personal_cli.formatting import emit_error, emit_result, read_markdown_from_source
 from personal_cli.setup_server import run_setup
 
 app = typer.Typer(help="Agent-facing article CLI.")
@@ -127,7 +128,23 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def _run(operation: Callable[[], Result]) -> Result:
+_SETUP_URL_RE = re.compile(r"https?://\S+")
+
+
+def _emit_setup_message(message: str, *, json_output: bool) -> None:
+    if not json_output:
+        _emit(message)
+        return
+    match = _SETUP_URL_RE.search(message)
+    emit_error(
+        "authentication_required",
+        "Credentials are required. Complete setup in your browser.",
+        json_output=True,
+        setup_url=match.group(0) if match else None,
+    )
+
+
+def _run(operation: Callable[[], Result], *, json_output: bool = False) -> Result:
     """Run an operation, opening the setup page when credentials are missing/rejected."""
     while True:
         try:
@@ -135,16 +152,22 @@ def _run(operation: Callable[[], Result]) -> Result:
         except MissingCredentialError:
             run_setup(
                 CredentialStore(),
-                output=_emit,
+                output=lambda message: _emit_setup_message(message, json_output=json_output),
                 prompt="Credentials are missing. Open this link in your browser",
             )
+        except CredentialError as exc:
+            emit_error(
+                "credential_store_unavailable",
+                str(exc),
+                json_output=json_output,
+            )
+            raise typer.Exit(code=2) from exc
         except CLIError as exc:
             if exc.status_code not in (401, 403):
                 raise
-            _emit("The server rejected the stored API key. Re-enter it in the setup page.")
             run_setup(
                 CredentialStore(),
-                output=_emit,
+                output=lambda message: _emit_setup_message(message, json_output=json_output),
                 prompt="Enter replacement credentials in your browser",
             )
 
@@ -165,7 +188,7 @@ def article_list(
         emit_result(articles, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -185,7 +208,7 @@ def article_show(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -224,7 +247,7 @@ def blog_create(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -266,7 +289,7 @@ def project_create(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -330,7 +353,7 @@ def article_update(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -351,7 +374,7 @@ def article_publish(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -370,7 +393,7 @@ def article_delete(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -390,7 +413,7 @@ def article_unarchive(
         emit_result(article, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -413,7 +436,7 @@ def article_preview(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -433,7 +456,7 @@ def tag_list(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -453,7 +476,7 @@ def tag_add(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -475,7 +498,7 @@ def tag_remove(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -495,7 +518,7 @@ def media_upload(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -515,7 +538,7 @@ def media_update(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -534,7 +557,7 @@ def media_delete(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -623,7 +646,7 @@ def service_create(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -644,7 +667,7 @@ def service_list(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -663,7 +686,7 @@ def service_show(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -731,7 +754,7 @@ def service_update(
         emit_result(result, json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -749,7 +772,7 @@ def service_delete(
         emit_result(run(client.delete_service(slug)), json_output=json_output)
 
     try:
-        _run(_op)
+        _run(_op, json_output=json_output)
     except CLIError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc

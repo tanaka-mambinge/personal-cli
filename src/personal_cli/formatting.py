@@ -36,3 +36,17 @@ def emit_result(data: Any, *, json_output: bool = False) -> None:
 
     print(data)
 
+
+def emit_error(
+    code: str,
+    message: str,
+    *,
+    json_output: bool = False,
+    **details: Any,
+) -> None:
+    if json_output:
+        error: dict[str, Any] = {"code": code, "message": message}
+        error.update(details)
+        print(json.dumps({"error": error}, ensure_ascii=False, default=str), file=sys.stderr)
+        return
+    print(message, file=sys.stderr)
