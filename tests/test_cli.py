@@ -443,6 +443,20 @@ def test_keys_setup_runs_attached_setup_server(
     assert json.loads(result.stdout)["configured"] is True
 
 
+def test_keys_revoke_removes_stored_credentials(
+    runner: CliRunner,
+    credential_store: FakeKeyringBackend,
+) -> None:
+    result = runner.invoke(app, ["keys", "revoke", "--json"])
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == {
+        "revoked": True,
+        "message": "Credentials revoked.",
+    }
+    assert credential_store.get_password("personal-cli", "default") is None
+
+
 def test_json_credential_store_error_is_structured(
     monkeypatch: pytest.MonkeyPatch,
     runner: CliRunner,
