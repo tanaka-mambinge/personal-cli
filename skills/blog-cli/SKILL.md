@@ -25,38 +25,23 @@ When a command needs credentials, run it normally, for example:
 blog-cli article list --json
 ```
 
-If credentials are missing, the command fails immediately with a JSON error on
-stderr. It does not print a setup URL or start a setup server:
-
-```json
-{
-  "error": {
-    "code": "authentication_required",
-    "message": "Authentication required. Run `blog-cli keys setup` in an attached process. Keep it running while the user enters and validates credentials in the browser, then rerun the original command.",
-    "setup_command": "blog-cli keys setup"
-  }
-}
-```
-
-Start the setup server with the command from the error:
+If a command reports that authentication is required, start the credential
+setup server separately:
 
 ```bash
 blog-cli keys setup
 ```
 
-Keep that command attached until it exits. Relay the exact setup URL it prints
-as a clickable link. The user enters the server URL, API key, and site URL in
-the browser form. The server stays running while invalid values are corrected,
-and exits only after valid credentials are saved. Then rerun the original
-command. Never ask the user to send the API key in chat or start a second setup
-server.
+Keep the setup command attached until it exits. Relay the exact setup URL it
+prints as a clickable link. The user enters the server URL, API key, and site
+URL in the browser form. The server stays running while invalid values are
+corrected and exits only after valid credentials are saved. Then rerun the
+original command. Never ask the user to send the API key in chat or start a
+second setup server.
 
-If the credential store itself is unavailable, the CLI emits an error with code
-`credential_store_unavailable`; report that environment problem instead of
-asking for the API key in chat.
-
-If the server rejects an existing key with `401` or `403`, the command fails
-with `authentication_required` and the same `blog-cli keys setup` instruction.
+If the credential store is unavailable, report that setup cannot continue in
+the current environment instead of asking for the API key in chat. If the
+server rejects an existing key, run the same setup command to replace it.
 
 ## Content routing
 
