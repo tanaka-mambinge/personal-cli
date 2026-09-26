@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from personal_cli.cli import app
+from personal_cli.client import CLIError
 from personal_cli.credentials import (
     CredentialError,
     CredentialStore,
@@ -56,6 +57,11 @@ class FakeApiClient:
         if status is not None:
             articles = [article for article in articles if article["status"] == status]
         return articles
+
+    async def get_article(self, slug: str, *, preview: str | None = None) -> dict:
+        if slug not in self.articles:
+            raise CLIError(f"GET /api/v1/articles/{slug} failed: 404 Article not found.", status_code=404)
+        return self.articles[slug]
 
     async def create_article(self, payload: dict) -> dict:
         slug = payload["slug"] or payload["title"].lower().replace(" ", "-")
@@ -229,6 +235,58 @@ def test_blog_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient) -
     list_result = runner.invoke(app, ["article", "list", "--type", "blog", "--json"])
     assert list_result.exit_code == 0
     assert json.loads(list_result.stdout)[0]["slug"] == "cli-blog"
+
+
+def test_article_show_supports_drafts_and_published_articles(
+    monkeypatch, runner: CliRunner, client: FakeApiClient
+) -> None:
+    monkeypatch.setattr("personal_cli.cli.build_client", _build_client_mock(client))
+    draft_create = runner.invoke(
+        app,
+        [
+            "article", "blog", "create",
+            "--title", "Draft to Show",
+            "--description", "Draft details",
+            "--markdown", "# Draft to Show\n\nDraft body.",
+            "--json",
+        ],
+    )
+    assert draft_create.exit_code == 0
+
+    draft_show = runner.invoke(app, ["article", "show", "draft-to-show", "--json"])
+    assert draft_show.exit_code == 0
+    draft = json.loads(draft_show.stdout)
+    assert draft["status"] == "draft"
+    assert draft["markdown"] == "# Draft to Show\n\nDraft body."
+    assert draft["url"] == "http://testsite/writing/draft-to-show?preview=test-token"
+    assert draft["preview_url"] == draft["url"]
+    draft_show_text = runner.invoke(app, ["article", "show", "draft-to-show"])
+    assert draft_show_text.exit_code == 0
+    assert "'status': 'draft'" in draft_show_text.stdout
+
+    published_create = runner.invoke(
+        app,
+        [
+            "article", "blog", "create",
+            "--title", "Published to Show",
+            "--description", "Published details",
+            "--markdown", "# Published to Show\n\nPublished body.",
+            "--status", "published",
+            "--json",
+        ],
+    )
+    assert published_create.exit_code == 0
+
+    published_show = runner.invoke(app, ["article", "show", "published-to-show", "--json"])
+    assert published_show.exit_code == 0
+    published = json.loads(published_show.stdout)
+    assert published["status"] == "published"
+    assert published["markdown"] == "# Published to Show\n\nPublished body."
+    assert published["url"] == "http://testsite/writing/published-to-show"
+
+    missing_show = runner.invoke(app, ["article", "show", "missing-article", "--json"])
+    assert missing_show.exit_code == 1
+    assert "GET /api/v1/articles/missing-article failed: 404 Article not found." in missing_show.stderr
 
 
 def test_project_cli_smoke(monkeypatch, runner: CliRunner, client: FakeApiClient) -> None:

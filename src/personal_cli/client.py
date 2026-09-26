@@ -64,8 +64,9 @@ class ArticleApiClient:
         result = await self._request_json("GET", "/api/v1/articles", params=params)
         return list(result or [])
 
-    async def get_article(self, slug: str) -> dict[str, Any]:
-        result = await self._request_json("GET", f"/api/v1/articles/{slug}")
+    async def get_article(self, slug: str, *, preview: str | None = None) -> dict[str, Any]:
+        params = {"preview": preview} if preview is not None else None
+        result = await self._request_json("GET", f"/api/v1/articles/{slug}", params=params)
         return dict(result)
 
     async def create_article(self, payload: dict[str, Any]) -> dict[str, Any]:

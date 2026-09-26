@@ -197,8 +197,20 @@ def article_show(
 ) -> None:
     def _op() -> None:
         client = build_client(server_url, insecure=insecure)
-        article = run(client.get_article(slug))
-        _with_article_url(article)
+        listed_article = next(
+            (article for article in run(client.list_articles(type_filter="all")) if article.get("slug") == slug),
+            None,
+        )
+        if listed_article is not None and listed_article.get("status") == "draft":
+            preview = run(client.generate_preview(slug, ttl_hours=24, base_url=_site_url()))
+            article = run(client.get_article(slug, preview=preview["token"]))
+            article["url"] = preview["url"]
+            article["preview_url"] = preview["url"]
+            article["preview_token"] = preview["token"]
+            article["preview_expires_at"] = preview["expires_at"]
+        else:
+            article = run(client.get_article(slug))
+            _with_article_url(article)
         emit_result(article, json_output=json_output)
 
     try:
